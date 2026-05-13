@@ -1,189 +1,88 @@
 {% extends "base.html" %}
-{% block title %}Iniciar Sesión — MediPortal{% endblock %}
+
+{% block title %}Login — MediPortal{% endblock %}
 
 {% block body %}
-<div class="min-h-screen flex items-center justify-center px-4 py-12">
+<div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-10">
 
-    <!-- Theme toggle flotante -->
-    <button id="theme-toggle" onclick="toggleTheme()"
-        class="fixed top-4 right-4 p-2.5 rounded-full bg-white dark:bg-slate-800 shadow border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 z-10">
-        <span class="icon-moon" style="display:block">
-            <svg class="w-4 h-4 text-slate-600 dark:text-slate-300" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/>
-            </svg>
-        </span>
-        <span class="icon-sun" style="display:none">
-            <svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/>
-                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
-                <line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/>
-                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/>
-            </svg>
-        </span>
-    </button>
+    <div class="w-full max-w-md bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
 
-    <div class="w-full max-w-4xl">
-        <div class="bg-white dark:bg-slate-900 rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row border border-slate-200 dark:border-slate-800">
+        <div class="text-center mb-8">
 
-            <!-- Panel izquierdo -->
-            <div class="bg-accent-600 dark:bg-accent-800 md:w-2/5 p-10 flex flex-col justify-between">
-                <div>
-                    <div class="flex items-center gap-3 mb-10">
-                        <div class="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
-                            </svg>
-                        </div>
-                        <span class="text-white font-semibold text-xl tracking-tight">MediPortal</span>
-                    </div>
+            <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
+                MediPortal
+            </h1>
 
-                    <h1 class="text-white text-3xl font-light leading-snug mb-4">
-                        Portal de<br><span class="font-semibold">autogestión</span>
-                    </h1>
-                    <p class="text-accent-100 text-sm leading-relaxed">
-                        Gestioná tus turnos y accedé a tus resultados médicos desde cualquier dispositivo, en cualquier momento.
-                    </p>
-                </div>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                Iniciar sesión
+            </p>
 
-                <div class="mt-10 space-y-3">
-                    <div class="flex items-center gap-3 text-accent-100 text-sm">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Turnos online
-                    </div>
-                    <div class="flex items-center gap-3 text-accent-100 text-sm">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Resultados e informes
-                    </div>
-                    <div class="flex items-center gap-3 text-accent-100 text-sm">
-                        <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
-                        </svg>
-                        Acceso seguro 24/7
-                    </div>
-                </div>
-            </div>
-
-            <!-- Panel derecho: formulario -->
-            <div class="md:w-3/5 p-10 flex flex-col justify-center">
-                <h2 class="text-2xl font-semibold text-slate-800 dark:text-slate-100 mb-1">Bienvenido</h2>
-                <p class="text-slate-500 dark:text-slate-400 text-sm mb-8">Ingresá con tus credenciales para continuar</p>
-
-                {% if error %}
-                <div class="mb-6 px-4 py-3 rounded-lg bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
-                    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                        <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    {{ error }}
-                </div>
-                {% endif %}
-
-                <!-- Tabs Paciente / Staff -->
-                <div class="flex border-b border-slate-200 dark:border-slate-700 mb-6">
-                    <button onclick="setTipo('paciente')" id="tab-paciente"
-                        class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 transition-colors">
-                        Paciente
-                    </button>
-                    <button onclick="setTipo('staff')" id="tab-staff"
-                        class="tab-btn px-4 py-2.5 text-sm font-medium border-b-2 transition-colors ml-1">
-                        Staff / Admin
-                    </button>
-                </div>
-
-                <form method="post" action="/login" class="space-y-5">
-                    <input type="hidden" name="tipo" id="input-tipo" value="paciente">
-
-                    <div>
-                        <label id="label-dni" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">DNI</label>
-                        <input type="text" name="dni_email" id="input-dni"
-                            placeholder="Ej: 30000001"
-                            class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-sm"
-                            required autocomplete="off">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Contraseña</label>
-                        <div class="relative">
-                            <input type="password" name="password" id="input-pass"
-                                placeholder="••••••••"
-                                class="w-full px-4 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500 focus:border-transparent text-sm pr-12"
-                                required>
-                            <button type="button" onclick="togglePass()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">
-                                <svg id="eye-off" class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"/>
-                                </svg>
-                                <svg id="eye-on" class="w-4 h-4 hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
-                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-
-                    <button type="submit"
-                        class="w-full py-2.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white font-medium text-sm transition-colors shadow-sm mt-2">
-                        Ingresar
-                    </button>
-                </form>
-            </div>
         </div>
 
-        <p class="text-center text-sm text-slate-500 dark:text-slate-400 mt-5">
-            ¿Primera vez?
-            <a href="/registro" class="text-accent-600 dark:text-accent-400 font-medium hover:underline">Registrate como paciente</a>
-        </p>
+        {% if error %}
+        <div class="mb-5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            {{ error }}
+        </div>
+        {% endif %}
 
-        <p class="text-center text-slate-400 text-xs mt-4">MediPortal &copy; {{ request.state.year }}</p>
+        <form method="post" action="/login" class="space-y-5">
+
+            <div>
+
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Usuario
+                </label>
+
+                <input
+                    type="text"
+                    name="usuario"
+                    required
+                    autofocus
+                    placeholder="Usuario o DNI"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                >
+
+            </div>
+
+            <div>
+
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Contraseña
+                </label>
+
+                <input
+                    type="password"
+                    name="password"
+                    required
+                    placeholder="********"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                >
+
+            </div>
+
+            <button
+                type="submit"
+                class="w-full rounded-xl bg-accent-600 hover:bg-accent-700 py-3 text-sm font-semibold text-white transition-colors"
+            >
+                Entrar
+            </button>
+
+        </form>
+
+        <div class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+
+            ¿No tenés cuenta?
+
+            <a
+                href="/registro"
+                class="text-accent-600 dark:text-accent-400 hover:underline"
+            >
+                Registrate
+            </a>
+
+        </div>
+
     </div>
+
 </div>
-
-{% block extra_scripts %}
-<script>
-    function setTipo(tipo) {
-        document.getElementById('input-tipo').value = tipo;
-        const label = document.getElementById('label-dni');
-        const input = document.getElementById('input-dni');
-        const tabP = document.getElementById('tab-paciente');
-        const tabS = document.getElementById('tab-staff');
-
-        const activeClass = ['border-accent-600', 'text-accent-700', 'dark:text-accent-400', 'dark:border-accent-500'];
-        const inactiveClass = ['border-transparent', 'text-slate-500', 'dark:text-slate-400'];
-
-        if (tipo === 'paciente') {
-            label.textContent = 'DNI';
-            input.placeholder = 'Ej: 30000001';
-            input.autocomplete = 'off';
-            tabP.className = 'tab-btn px-4 py-2.5 text-sm font-medium border-b-2 transition-colors border-accent-600 text-accent-700 dark:text-accent-400 dark:border-accent-500';
-            tabS.className = 'tab-btn px-4 py-2.5 text-sm font-medium border-b-2 transition-colors border-transparent text-slate-500 dark:text-slate-400 ml-1';
-        } else {
-            label.textContent = 'Email';
-            input.placeholder = 'admin@mediportal.com';
-            input.autocomplete = 'email';
-            tabP.className = 'tab-btn px-4 py-2.5 text-sm font-medium border-b-2 transition-colors border-transparent text-slate-500 dark:text-slate-400';
-            tabS.className = 'tab-btn px-4 py-2.5 text-sm font-medium border-b-2 transition-colors border-accent-600 text-accent-700 dark:text-accent-400 dark:border-accent-500 ml-1';
-        }
-    }
-
-    function togglePass() {
-        const input = document.getElementById('input-pass');
-        const eyeOff = document.getElementById('eye-off');
-        const eyeOn  = document.getElementById('eye-on');
-        if (input.type === 'password') {
-            input.type = 'text';
-            eyeOff.classList.add('hidden');
-            eyeOn.classList.remove('hidden');
-        } else {
-            input.type = 'password';
-            eyeOff.classList.remove('hidden');
-            eyeOn.classList.add('hidden');
-        }
-    }
-
-    // Init tab activo
-    setTipo('paciente');
-</script>
-{% endblock %}
 {% endblock %}
