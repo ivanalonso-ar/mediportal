@@ -29,17 +29,33 @@
 
             <div>
 
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                    Tipo de usuario
+                </label>
+
+                <select
+                    name="tipo"
+                    required
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                >
+                    <option value="paciente">Paciente</option>
+                    <option value="staff">Staff</option>
+                </select>
+
+            </div>
+
+            <div>
+
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
-                    Usuario
+                    DNI o Email
                 </label>
 
                 <input
                     type="text"
-                    name="usuario"
+                    name="dni_email"
                     required
                     autofocus
-                    placeholder="Usuario o DNI"
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
                 >
 
             </div>
@@ -54,8 +70,7 @@
                     type="password"
                     name="password"
                     required
-                    placeholder="********"
-                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
                 >
 
             </div>
@@ -69,7 +84,7 @@
 
         </form>
 
-        <div class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+        <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
 
             ¿No tenés cuenta?
 
@@ -80,7 +95,7 @@
                 Registrate
             </a>
 
-        </div>
+        </p>
 
     </div>
 
