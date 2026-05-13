@@ -1,61 +1,150 @@
-from database import SessionLocal
-from models import Paciente, UsuarioStaff
+from database import SessionLocal, engine
+from models import Base, UsuarioStaff, Paciente
 from auth import get_password_hash
+
+# Crear tablas
+Base.metadata.create_all(bind=engine)
 
 db = SessionLocal()
 
-# ADMIN
-if not db.query(UsuarioStaff).filter_by(email="admin@mediportal.com").first():
-    db.add(UsuarioStaff(
-        nombre="Admin",
-        apellido="Sistema",
-        email="admin@mediportal.com",
-        password_hash=get_password_hash("admin123"),
-        rol="admin",
-        activo=True
-    ))
+try:
 
-# RECEPCION
-if not db.query(UsuarioStaff).filter_by(email="recepcion@mediportal.com").first():
-    db.add(UsuarioStaff(
-        nombre="Recepcion",
-        apellido="Principal",
-        email="recepcion@mediportal.com",
-        password_hash=get_password_hash("recepcion123"),
-        rol="recepcion",
-        activo=True
-    ))
+    # =========================
+    # ADMIN
+    # =========================
+    admin = db.query(UsuarioStaff).filter_by(
+        email="admin@mediportal.com"
+    ).first()
 
-# MEDICO
-if not db.query(UsuarioStaff).filter_by(email="medico@mediportal.com").first():
-    db.add(UsuarioStaff(
-        nombre="Juan",
-        apellido="Perez",
-        email="medico@mediportal.com",
-        password_hash=get_password_hash("medico123"),
-        rol="profesional",
-        activo=True
-    ))
+    if not admin:
 
-# PACIENTES
-for i in range(1, 4):
+        admin = UsuarioStaff(
+            nombre="Admin",
+            apellido="Sistema",
+            email="admin@mediportal.com",
+            password_hash=get_password_hash("admin123"),
+            rol="admin",
+            activo=True
+        )
 
-    dni = f"1000{i}"
+        db.add(admin)
 
-    if not db.query(Paciente).filter_by(dni=dni).first():
+    # =========================
+    # RECEPCIONISTA
+    # =========================
+    recep = db.query(UsuarioStaff).filter_by(
+        email="recepcion@mediportal.com"
+    ).first()
 
-        db.add(Paciente(
-            dni=dni,
-            nombre=f"Paciente{i}",
-            apellido="Demo",
-            email=f"paciente{i}@mail.com",
-            password_hash=get_password_hash("123456"),
-            primer_login=False,
-            activo=True,
-            aprobado=True
-        ))
+    if not recep:
 
-db.commit()
-db.close()
+        recep = UsuarioStaff(
+            nombre="Lucia",
+            apellido="Recepcion",
+            email="recepcion@mediportal.com",
+            password_hash=get_password_hash("recepcion123"),
+            rol="recepcionista",
+            activo=True
+        )
 
-print("Usuarios demo creados.")
+        db.add(recep)
+
+    # =========================
+    # MEDICO
+    # =========================
+    medico = db.query(UsuarioStaff).filter_by(
+        email="medico@mediportal.com"
+    ).first()
+
+    if not medico:
+
+        medico = UsuarioStaff(
+            nombre="Juan",
+            apellido="Perez",
+            email="medico@mediportal.com",
+            password_hash=get_password_hash("medico123"),
+            rol="medico",
+            activo=True
+        )
+
+        db.add(medico)
+
+    # =========================
+    # PACIENTES
+    # =========================
+    pacientes = [
+        {
+            "dni": "10001",
+            "nombre": "Carlos",
+            "apellido": "Lopez",
+            "email": "paciente1@mail.com"
+        },
+        {
+            "dni": "10002",
+            "nombre": "Ana",
+            "apellido": "Martinez",
+            "email": "paciente2@mail.com"
+        },
+        {
+            "dni": "10003",
+            "nombre": "Pedro",
+            "apellido": "Gomez",
+            "email": "paciente3@mail.com"
+        }
+    ]
+
+    for p in pacientes:
+
+        existe = db.query(Paciente).filter_by(
+            dni=p["dni"]
+        ).first()
+
+        if not existe:
+
+            paciente = Paciente(
+                dni=p["dni"],
+                nombre=p["nombre"],
+                apellido=p["apellido"],
+                email=p["email"],
+                password_hash=get_password_hash("123456"),
+                primer_login=False,
+                activo=True,
+                aprobado=True
+            )
+
+            db.add(paciente)
+
+    db.commit()
+
+    print("===================================")
+    print("USUARIOS DEMO CREADOS")
+    print("===================================")
+    print("")
+    print("ADMIN")
+    print("admin@mediportal.com")
+    print("admin123")
+    print("")
+    print("RECEPCIONISTA")
+    print("recepcion@mediportal.com")
+    print("recepcion123")
+    print("")
+    print("MEDICO")
+    print("medico@mediportal.com")
+    print("medico123")
+    print("")
+    print("PACIENTES")
+    print("10001 / 123456")
+    print("10002 / 123456")
+    print("10003 / 123456")
+    print("===================================")
+
+except Exception as e:
+
+    db.rollback()
+
+    print("ERROR:")
+    print(e)
+
+finally:
+
+    db.close()
