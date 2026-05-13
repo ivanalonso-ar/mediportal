@@ -1,0 +1,64 @@
+{% extends "base_paciente.html" %}
+{% set active_page = "resultados" %}
+{% block title %}Mis Resultados — MediPortal{% endblock %}
+
+{% block content %}
+
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Mis Resultados</h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Informes y estudios disponibles para descargar</p>
+</div>
+
+{% if resultados %}
+<div class="space-y-3">
+    {% for r in resultados %}
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-4 flex items-center justify-between gap-4">
+        <div class="flex items-center gap-4">
+            <div class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0">
+                <svg class="w-5 h-5 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                </svg>
+            </div>
+            <div>
+                <p class="font-medium text-slate-800 dark:text-slate-200">{{ r.titulo }}</p>
+                <div class="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex-wrap">
+                    {% if r.fecha_estudio %}<span>{{ r.fecha_estudio }}</span>{% endif %}
+                    {% if r.subido_por %}<span class="text-slate-300 dark:text-slate-600">·</span><span>{{ r.subido_por }}</span>{% endif %}
+                    {% if r.descripcion %}
+                    <span class="text-slate-300 dark:text-slate-600">·</span>
+                    <span class="italic">{{ r.descripcion[:80] }}{% if r.descripcion|length > 80 %}...{% endif %}</span>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        {% if r.archivo_path %}
+        <a href="/paciente/resultados/descargar/{{ r.id }}"
+            class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-xs font-medium transition-colors shadow-sm">
+            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Descargar
+        </a>
+        {% else %}
+        <span class="flex-shrink-0 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 text-xs font-medium">
+            Sin archivo
+        </span>
+        {% endif %}
+    </div>
+    {% endfor %}
+</div>
+
+{% else %}
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-12 text-center">
+    <div class="w-14 h-14 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-7 h-7 text-slate-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+        </svg>
+    </div>
+    <p class="text-slate-500 dark:text-slate-400 text-sm">No hay resultados disponibles aún.</p>
+    <p class="text-slate-400 dark:text-slate-500 text-xs mt-1">Cuando el profesional suba un informe, aparecerá aquí.</p>
+</div>
+{% endif %}
+
+{% endblock %}

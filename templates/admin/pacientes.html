@@ -1,0 +1,235 @@
+{% extends "base_admin.html" %}
+{% set active_page = "pacientes" %}
+{% block title %}Pacientes — MediPortal Admin{% endblock %}
+{% block page_title %}Pacientes{% endblock %}
+
+{% block content %}
+
+{% if pendientes_count > 0 %}
+<div class="mb-4 flex items-center gap-3 flex-wrap">
+    <a href="/admin/pacientes{% if filtro != 'pendientes' %}?filtro=pendientes{% endif %}"
+        class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors
+            {% if filtro == 'pendientes' %}bg-amber-500 text-white{% else %}bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 border border-amber-200 dark:border-amber-800 hover:bg-amber-100{% endif %}">
+        <span class="w-5 h-5 rounded-full bg-amber-600 text-white text-xs font-bold flex items-center justify-center">{{ pendientes_count }}</span>
+        {% if filtro == 'pendientes' %}Mostrando pendientes{% else %}Registros pendientes de aprobación{% endif %}
+    </a>
+    {% if filtro == 'pendientes' %}
+    <a href="/admin/pacientes" class="text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">Ver todos</a>
+    {% endif %}
+</div>
+{% endif %}
+
+{% if msg %}
+<div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border
+    {% if msg_tipo == 'success' %}bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300
+    {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
+    {{ msg }}
+</div>
+{% endif %}
+
+<div class="flex items-center justify-between mb-5">
+    <!-- Buscador -->
+    <form method="get" action="/admin/pacientes" class="flex items-center gap-2">
+        <div class="relative">
+            <svg class="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+            <input type="text" name="q" value="{{ buscar }}" placeholder="Buscar por nombre o DNI..."
+                class="pl-9 pr-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 w-64">
+        </div>
+        <button type="submit" class="px-4 py-2 rounded-lg bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors">Buscar</button>
+        {% if buscar %}<a href="/admin/pacientes" class="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-300">Limpiar</a>{% endif %}
+    </form>
+
+    <button onclick="toggleModal('modal-nuevo')"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Nuevo paciente
+    </button>
+</div>
+
+<!-- Tabla -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    {% if pacientes %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Paciente</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">DNI</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden md:table-cell">Contacto</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider hidden lg:table-cell">Obra Social</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {% for p in pacientes %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-accent-100 dark:bg-accent-900/30 flex items-center justify-center flex-shrink-0">
+                                <span class="text-accent-700 dark:text-accent-400 text-xs font-semibold">{{ p.nombre[0] }}{{ p.apellido[0] }}</span>
+                            </div>
+                            <div>
+                                <p class="font-medium text-slate-800 dark:text-slate-200">{{ p.apellido }}, {{ p.nombre }}</p>
+                                {% if p.primer_login %}
+                                <span class="text-xs text-amber-600 dark:text-amber-400">· Primer login pendiente</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-slate-600 dark:text-slate-400 font-mono text-xs">{{ p.dni }}</td>
+                    <td class="px-4 py-3 text-slate-500 dark:text-slate-400 hidden md:table-cell">
+                        {% if p.email %}<p>{{ p.email }}</p>{% endif %}
+                        {% if p.telefono %}<p class="text-xs">{{ p.telefono }}</p>{% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-slate-500 dark:text-slate-400 hidden lg:table-cell">{{ p.obra_social or '—' }}</td>
+                    <td class="px-4 py-3">
+                        {% if not p.aprobado %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">⏳ Pendiente</span>
+                        {% elif p.activo %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Activo</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        {% if not p.aprobado %}
+                        <form method="post" action="/admin/pacientes/aprobar/{{ p.id }}" class="inline">
+                            <button type="submit" class="text-xs px-2.5 py-1.5 rounded-lg border border-emerald-300 dark:border-emerald-700 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition-colors font-medium">
+                                ✓ Aprobar
+                            </button>
+                        </form>
+                        <button onclick="toggleModal('modal-rechazar-{{ p.id }}')"
+                            class="text-xs px-2.5 py-1.5 rounded-lg border border-red-200 dark:border-red-800 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                            Rechazar
+                        </button>
+                        <!-- Modal rechazar -->
+                        <div id="modal-rechazar-{{ p.id }}" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+                            <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="toggleModal('modal-rechazar-{{ p.id }}')"></div>
+                            <div class="relative bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-sm p-6">
+                                <h3 class="font-semibold text-slate-800 dark:text-slate-100 mb-2">Rechazar registro</h3>
+                                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">¿Rechazar el registro de <strong>{{ p.nombre }} {{ p.apellido }}</strong>? Se eliminará su cuenta.</p>
+                                <form method="post" action="/admin/pacientes/rechazar/{{ p.id }}" class="space-y-3">
+                                    <input type="text" name="motivo" placeholder="Motivo (opcional)"
+                                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-sm text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-red-400">
+                                    <div class="flex gap-2">
+                                        <button type="button" onclick="toggleModal('modal-rechazar-{{ p.id }}')"
+                                            class="flex-1 py-2 rounded-lg border border-slate-300 dark:border-slate-600 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800">Cancelar</button>
+                                        <button type="submit" class="flex-1 py-2 rounded-lg bg-red-500 hover:bg-red-600 text-white text-sm font-medium">Rechazar</button>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+                        {% else %}
+                    <form method="post" action="/admin/pacientes/toggle/{{ p.id }}" class="inline">
+                            <button type="submit"
+                                onclick="return confirm('¿{{ 'Desactivar' if p.activo else 'Activar' }} a {{ p.nombre }} {{ p.apellido }}?')"
+                                class="text-xs px-2.5 py-1.5 rounded-lg border transition-colors
+                                    {% if p.activo %}border-slate-200 dark:border-slate-700 text-slate-500 hover:border-red-300 hover:text-red-500 dark:hover:border-red-800 dark:hover:text-red-400
+                                    {% else %}border-slate-200 dark:border-slate-700 text-slate-500 hover:border-emerald-300 hover:text-emerald-600 dark:hover:border-emerald-800 dark:hover:text-emerald-400{% endif %}">
+                                {{ 'Desactivar' if p.activo else 'Activar' }}
+                            </button>
+                        </form>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="py-12 text-center text-slate-400 text-sm">
+        {% if buscar %}No se encontraron resultados para "{{ buscar }}".{% else %}No hay pacientes registrados.{% endif %}
+    </div>
+    {% endif %}
+</div>
+
+
+<!-- Modal: Nuevo paciente -->
+<div id="modal-nuevo" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4 py-6">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="toggleModal('modal-nuevo')"></div>
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="font-semibold text-slate-800 dark:text-slate-100">Nuevo paciente</h2>
+            <button onclick="toggleModal('modal-nuevo')" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" action="/admin/pacientes/nuevo" class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre *</label>
+                    <input type="text" name="nombre" required placeholder="Juan"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Apellido *</label>
+                    <input type="text" name="apellido" required placeholder="Pérez"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">DNI *</label>
+                <input type="text" name="dni" required placeholder="30000000"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email</label>
+                    <input type="email" name="email" placeholder="email@ejemplo.com"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Teléfono</label>
+                    <input type="text" name="telefono" placeholder="11-1234-5678"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha de nacimiento</label>
+                    <input type="date" name="fecha_nacimiento"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Obra Social</label>
+                    <input type="text" name="obra_social" placeholder="OSDE, Swiss Medical..."
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contraseña inicial *</label>
+                <input type="text" name="password" required placeholder="El paciente la cambiará al primer login"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                <p class="text-xs text-slate-400 mt-1">Se forzará el cambio de contraseña en el primer ingreso.</p>
+            </div>
+            <div class="flex gap-3 pt-1">
+                <button type="button" onclick="toggleModal('modal-nuevo')"
+                    class="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 py-2.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors">
+                    Crear paciente
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    function toggleModal(id) {
+        document.getElementById(id).classList.toggle('hidden');
+    }
+</script>
+{% endblock %}

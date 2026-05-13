@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="es" class="">
+<head>
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}MediPortal{% endblock %}</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: { sans: ['Outfit', 'sans-serif'] },
+                    colors: {
+                        accent: {
+                            50:  '#f0f9f8',
+                            100: '#ccece9',
+                            200: '#99d9d4',
+                            300: '#5fbdb6',
+                            400: '#3a9e97',
+                            500: '#2d837d',
+                            600: '#256a65',
+                            700: '#1f5450',
+                            800: '#1a4240',
+                            900: '#143432',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        *, *::before, *::after {
+            transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease, fill 0.15s ease;
+        }
+        body { font-family: 'Outfit', sans-serif; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .dark ::-webkit-scrollbar-thumb { background: #475569; }
+        .badge-pendiente   { @apply bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300; }
+        .badge-confirmado  { @apply bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300; }
+        .badge-completado  { @apply bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300; }
+        .badge-cancelado   { @apply bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-300; }
+    </style>
+    {% block extra_head %}{% endblock %}
+</head>
+<body class="bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-200 min-h-screen antialiased">
+
+    <!-- Aplicar tema ANTES de pintar para evitar flash -->
+    <script>
+        (function() {
+            const saved = localStorage.getItem('mp_theme');
+            if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            }
+        })();
+    </script>
+
+    {% block body %}{% endblock %}
+
+    <script>
+        function toggleTheme() {
+            const html = document.documentElement;
+            const isDark = html.classList.toggle('dark');
+            localStorage.setItem('mp_theme', isDark ? 'dark' : 'light');
+            const btn = document.getElementById('theme-toggle');
+            if (btn) {
+                btn.querySelector('.icon-sun').style.display  = isDark ? 'block' : 'none';
+                btn.querySelector('.icon-moon').style.display = isDark ? 'none'  : 'block';
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            const btn = document.getElementById('theme-toggle');
+            if (!btn) return;
+            const isDark = document.documentElement.classList.contains('dark');
+            btn.querySelector('.icon-sun').style.display  = isDark ? 'block' : 'none';
+            btn.querySelector('.icon-moon').style.display = isDark ? 'none'  : 'block';
+        });
+
+        // Auto-ocultar alertas después de 5s
+        document.addEventListener('DOMContentLoaded', function() {
+            const alerts = document.querySelectorAll('.auto-dismiss');
+            alerts.forEach(function(el) {
+                setTimeout(function() {
+                    el.style.transition = 'opacity 0.5s ease';
+                    el.style.opacity = '0';
+                    setTimeout(function() { el.remove(); }, 500);
+                }, 5000);
+            });
+        });
+    </script>
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>

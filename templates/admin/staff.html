@@ -1,0 +1,160 @@
+{% extends "base_admin.html" %}
+{% set active_page = "staff" %}
+{% block title %}Equipo — MediPortal Admin{% endblock %}
+{% block page_title %}Equipo / Staff{% endblock %}
+
+{% block content %}
+
+{% if msg %}
+<div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border
+    {% if msg_tipo == 'success' %}bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300
+    {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
+    {{ msg }}
+</div>
+{% endif %}
+
+<div class="flex items-center justify-between mb-5">
+    <p class="text-sm text-slate-500 dark:text-slate-400">{{ staff | length }} usuario(s) registrado(s)</p>
+    <button onclick="toggleModal('modal-nuevo')"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+        </svg>
+        Nuevo usuario
+    </button>
+</div>
+
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    {% if staff %}
+    <div class="overflow-x-auto">
+        <table class="w-full text-sm">
+            <thead>
+                <tr class="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Usuario</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Email</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Rol</th>
+                    <th class="text-left px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Estado</th>
+                    <th class="px-4 py-3"></th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+                {% for s in staff %}
+                <tr class="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td class="px-4 py-3">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0
+                                {% if s.rol == 'admin' %}bg-purple-100 dark:bg-purple-900/30
+                                {% elif s.rol == 'profesional' %}bg-sky-100 dark:bg-sky-900/30
+                                {% else %}bg-slate-100 dark:bg-slate-800{% endif %}">
+                                <span class="text-xs font-semibold
+                                    {% if s.rol == 'admin' %}text-purple-700 dark:text-purple-400
+                                    {% elif s.rol == 'profesional' %}text-sky-700 dark:text-sky-400
+                                    {% else %}text-slate-600 dark:text-slate-400{% endif %}">
+                                    {{ s.nombre[0] }}{{ s.apellido[0] }}
+                                </span>
+                            </div>
+                            <span class="font-medium text-slate-800 dark:text-slate-200">{{ s.apellido }}, {{ s.nombre }}</span>
+                        </div>
+                    </td>
+                    <td class="px-4 py-3 text-slate-500 dark:text-slate-400">{{ s.email }}</td>
+                    <td class="px-4 py-3">
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium
+                            {% if s.rol == 'admin' %}bg-purple-100 text-purple-800 dark:bg-purple-900/40 dark:text-purple-300
+                            {% elif s.rol == 'profesional' %}bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-300
+                            {% else %}bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300{% endif %}">
+                            {{ s.rol | capitalize }}
+                        </span>
+                    </td>
+                    <td class="px-4 py-3">
+                        {% if s.activo %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">Activo</span>
+                        {% else %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400">Inactivo</span>
+                        {% endif %}
+                    </td>
+                    <td class="px-4 py-3 text-right">
+                        <form method="post" action="/admin/staff/toggle/{{ s.id }}" class="inline">
+                            <button type="submit"
+                                onclick="return confirm('¿{{ 'Desactivar' if s.activo else 'Activar' }} a {{ s.nombre }} {{ s.apellido }}?')"
+                                class="text-xs px-2.5 py-1.5 rounded-lg border transition-colors
+                                    {% if s.activo %}border-slate-200 dark:border-slate-700 text-slate-500 hover:border-red-300 hover:text-red-500
+                                    {% else %}border-slate-200 dark:border-slate-700 text-slate-500 hover:border-emerald-300 hover:text-emerald-600{% endif %}">
+                                {{ 'Desactivar' if s.activo else 'Activar' }}
+                            </button>
+                        </form>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+    <div class="py-10 text-center text-slate-400 text-sm">No hay usuarios registrados.</div>
+    {% endif %}
+</div>
+
+<!-- Modal nuevo staff -->
+<div id="modal-nuevo" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="toggleModal('modal-nuevo')"></div>
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-md p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="font-semibold text-slate-800 dark:text-slate-100">Nuevo usuario</h2>
+            <button onclick="toggleModal('modal-nuevo')" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+        <form method="post" action="/admin/staff/nuevo" class="space-y-4">
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Nombre *</label>
+                    <input type="text" name="nombre" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Apellido *</label>
+                    <input type="text" name="apellido" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Email *</label>
+                <input type="email" name="email" required
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Rol *</label>
+                <select name="rol" required
+                    class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <option value="recepcion">Recepción</option>
+                    <option value="profesional">Profesional</option>
+                    <option value="admin">Admin</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Contraseña *</label>
+                <input type="text" name="password" required placeholder="Contraseña inicial"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+            <div class="flex gap-3 pt-1">
+                <button type="button" onclick="toggleModal('modal-nuevo')"
+                    class="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 py-2.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors">
+                    Crear usuario
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+</script>
+{% endblock %}

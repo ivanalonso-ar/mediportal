@@ -1,0 +1,170 @@
+{% extends "base_profesional.html" %}
+{% set active_page = "informes" %}
+{% block title %}Cargar Informe — MediPortal{% endblock %}
+
+{% block content %}
+
+<div class="mb-6">
+    <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Cargar Informe</h1>
+    <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Subí informes escritos o PDF para tus pacientes</p>
+</div>
+
+{% if msg %}
+<div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm border
+    {% if msg_tipo == 'success' %}bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300
+    {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
+    {{ msg }}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+
+    <!-- Formulario cargar informe -->
+    <div class="lg:col-span-3">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <h2 class="font-semibold text-slate-800 dark:text-slate-100 mb-5">Nuevo informe</h2>
+
+            <form method="post" action="/profesional/informes/subir" enctype="multipart/form-data" class="space-y-4" id="form-informe">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Paciente *</label>
+                    <select name="paciente_id" required id="select-paciente"
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        <option value="">Seleccioná un paciente</option>
+                        {% for p in pacientes %}
+                        <option value="{{ p.id }}" {% if request.query_params.get('paciente_id') == p.id|string %}selected{% endif %}>
+                            {{ p.apellido }}, {{ p.nombre }} — {{ p.dni }}
+                        </option>
+                        {% endfor %}
+                    </select>
+                    {% if not pacientes %}
+                    <p class="text-xs text-amber-600 dark:text-amber-400 mt-1">No tenés pacientes con turnos asignados aún.</p>
+                    {% endif %}
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Título del informe *</label>
+                    <input type="text" name="titulo" required placeholder="Ej: Electrocardiograma, Hemograma..."
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha del estudio</label>
+                    <input type="date" name="fecha_estudio"
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                </div>
+
+                <!-- Selector tipo de carga -->
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">Tipo de carga</label>
+                    <div class="flex gap-3">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="tipo_carga" value="texto" onchange="toggleTipoCarga('texto')"
+                                class="text-sky-600 focus:ring-sky-500">
+                            <span class="text-sm text-slate-700 dark:text-slate-300">Informe escrito</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="tipo_carga" value="pdf" checked onchange="toggleTipoCarga('pdf')"
+                                class="text-sky-600 focus:ring-sky-500">
+                            <span class="text-sm text-slate-700 dark:text-slate-300">Subir PDF</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Informe escrito -->
+                <div id="area-texto" style="display:none">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Texto del informe</label>
+                    <textarea name="descripcion" rows="6" placeholder="Escribí el informe aquí..."
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 resize-y"></textarea>
+                </div>
+
+                <!-- Subir PDF -->
+                <div id="area-pdf">
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Archivo PDF *</label>
+                    <div class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-sky-400 transition-colors"
+                        onclick="document.getElementById('archivo-input').click()">
+                        <svg class="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                        </svg>
+                        <p id="file-label" class="text-sm text-slate-500 dark:text-slate-400">Hacé clic para seleccionar un PDF</p>
+                    </div>
+                    <input type="file" name="archivo" id="archivo-input" accept=".pdf" class="hidden">
+                </div>
+
+                <button type="submit"
+                    class="w-full py-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition-colors shadow-sm">
+                    Cargar informe
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Últimos informes cargados -->
+    <div class="lg:col-span-2">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+            <div class="px-4 py-3.5 border-b border-slate-200 dark:border-slate-800">
+                <h3 class="font-medium text-slate-800 dark:text-slate-200 text-sm">Últimos informes cargados</h3>
+            </div>
+            {% if resultados %}
+            <div class="divide-y divide-slate-100 dark:divide-slate-800">
+                {% for r in resultados %}
+                <div class="px-4 py-3">
+                    <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ r.titulo }}</p>
+                    <p class="text-xs text-sky-600 dark:text-sky-400 mt-0.5">{{ r.paciente.apellido }}, {{ r.paciente.nombre }}</p>
+                    <p class="text-xs text-slate-400 mt-0.5">
+                        {% if r.fecha_estudio %}{{ r.fecha_estudio }} · {% endif %}
+                        {% if r.archivo_path %}
+                        <span class="text-emerald-600 dark:text-emerald-400">PDF</span>
+                        {% else %}
+                        <span class="text-slate-400">Texto</span>
+                        {% endif %}
+                    </p>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="px-4 py-8 text-center text-slate-400 text-sm">Aún no cargaste informes.</div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleTipoCarga(tipo) {
+    const areaPdf = document.getElementById('area-pdf');
+    const areaTexto = document.getElementById('area-texto');
+    const archivoInput = document.getElementById('archivo-input');
+
+    if (tipo === 'texto') {
+        areaPdf.style.display = 'none';
+        areaTexto.style.display = 'block';
+        archivoInput.removeAttribute('required');
+    } else {
+        areaPdf.style.display = 'block';
+        areaTexto.style.display = 'none';
+    }
+}
+
+document.getElementById('archivo-input').addEventListener('change', function() {
+    const label = document.getElementById('file-label');
+    label.textContent = this.files[0] ? this.files[0].name : 'Hacé clic para seleccionar un PDF';
+    if (this.files[0]) {
+        document.querySelector('[onclick]').classList.add('border-sky-500');
+    }
+});
+
+// Pre-seleccionar paciente si viene por parámetro
+document.addEventListener('DOMContentLoaded', function() {
+    const params = new URLSearchParams(window.location.search);
+    const pid = params.get('paciente_id');
+    if (pid) {
+        const sel = document.getElementById('select-paciente');
+        if (sel) sel.value = pid;
+    }
+});
+</script>
+{% endblock %}

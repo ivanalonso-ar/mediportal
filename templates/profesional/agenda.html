@@ -1,0 +1,189 @@
+{% extends "base_profesional.html" %}
+{% set active_page = "agenda" %}
+{% block title %}Mi Agenda — MediPortal{% endblock %}
+
+{% block content %}
+
+<div class="flex items-center justify-between mb-5 flex-wrap gap-3">
+    <div>
+        <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Mi Agenda</h1>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">{{ user.nombre }} {{ user.apellido }}</p>
+    </div>
+    <div class="flex items-center gap-1 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+        <a href="/profesional/agenda?vista=dia&fecha={{ fecha }}"
+            class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors
+                {% if vista == 'dia' %}bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm{% else %}text-slate-500 hover:text-slate-700 dark:hover:text-slate-300{% endif %}">
+            Por día
+        </a>
+        <a href="/profesional/agenda?vista=mes&fecha={{ fecha }}"
+            class="px-4 py-1.5 rounded-md text-sm font-medium transition-colors
+                {% if vista == 'mes' %}bg-white dark:bg-slate-700 text-slate-800 dark:text-slate-100 shadow-sm{% else %}text-slate-500 hover:text-slate-700 dark:hover:text-slate-300{% endif %}">
+            Vista mensual
+        </a>
+    </div>
+</div>
+
+{% if vista == 'dia' %}
+
+{% if msg %}
+<div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm border
+    {% if msg_tipo == 'success' %}bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300
+    {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">{{ msg }}</div>
+{% endif %}
+
+<div class="flex items-center gap-2 mb-5 flex-wrap">
+    <a href="/profesional/agenda?vista=dia&fecha={{ fecha_anterior }}"
+        class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <form method="get" action="/profesional/agenda">
+        <input type="hidden" name="vista" value="dia">
+        <input type="date" name="fecha" value="{{ fecha }}" onchange="this.form.submit()"
+            class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500">
+    </form>
+    <a href="/profesional/agenda?vista=dia&fecha={{ fecha_siguiente }}"
+        class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    <a href="/profesional/agenda?vista=dia"
+        class="px-3 py-2 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-medium hover:bg-sky-100 transition-colors">Hoy</a>
+</div>
+
+<div class="mb-4">
+    <h2 class="text-base font-semibold text-slate-700 dark:text-slate-300">{{ fecha_obj | fecha_es }}</h2>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+        {{ turnos | length }} turno(s) —
+        {{ turnos | selectattr('tipo', 'eq', 'normal') | list | length }} normal(es){% if turnos | selectattr('tipo', 'eq', 'sobreturno') | list | length > 0 %},
+        <span class="text-amber-600 dark:text-amber-400">{{ turnos | selectattr('tipo', 'eq', 'sobreturno') | list | length }} sobreturno(s)</span>{% endif %}
+    </p>
+</div>
+
+{% if turnos %}
+<div class="space-y-2">
+    {% set ns = namespace(hora_actual='') %}
+    {% for t in turnos %}
+    {% if t.hora != ns.hora_actual %}{% set ns.hora_actual = t.hora %}
+    <div class="flex items-center gap-3 mt-4 mb-1">
+        <span class="text-xs font-bold text-slate-400 w-12 text-right flex-shrink-0">{{ t.hora }}</span>
+        <div class="flex-1 h-px bg-slate-200 dark:bg-slate-700"></div>
+    </div>
+    {% endif %}
+    <div class="flex items-start gap-3">
+        <div class="w-12 flex-shrink-0"></div>
+        <div class="flex-1 rounded-xl border p-4 {% if t.tipo == 'sobreturno' %}bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800{% else %}bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800{% endif %}">
+            <div class="flex items-center gap-3 flex-wrap">
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 {% if t.tipo == 'sobreturno' %}bg-amber-100 dark:bg-amber-900/40{% else %}bg-sky-100 dark:bg-sky-900/30{% endif %}">
+                    <span class="text-xs font-semibold {% if t.tipo == 'sobreturno' %}text-amber-700 dark:text-amber-400{% else %}text-sky-700 dark:text-sky-400{% endif %}">{{ t.paciente.nombre[0] }}{{ t.paciente.apellido[0] }}</span>
+                </div>
+                <div class="flex-1">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-semibold text-slate-800 dark:text-slate-100">{{ t.paciente.apellido }}, {{ t.paciente.nombre }}</span>
+                        {% if t.tipo == 'sobreturno' %}<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300">⚡ SOBRETURNO</span>{% endif %}
+                        {% if t.tipo_consulta == 'particular' %}<span class="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-800 dark:bg-violet-900/40 dark:text-violet-300">Particular</span>{% endif %}
+                        <span class="px-2 py-0.5 rounded-full text-xs font-medium badge-{{ t.estado }}">{{ t.estado | capitalize }}</span>
+                    </div>
+                    <p class="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+                        {{ t.especialidad }}{% if t.paciente.obra_social and t.tipo_consulta != 'particular' %} · {{ t.paciente.obra_social }}{% endif %}
+                    </p>
+                    {% if t.observaciones %}<p class="text-xs text-slate-400 mt-1 italic">{{ t.observaciones }}</p>{% endif %}
+                </div>
+                <a href="/profesional/informes?paciente_id={{ t.paciente.id }}"
+                    class="flex-shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                    Informe
+                </a>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 py-14 text-center">
+    <p class="text-slate-400 text-sm">No tenés turnos asignados para este día.</p>
+</div>
+{% endif %}
+
+{% else %}
+
+{# ═══════════════ VISTA MENSUAL ═══════════════ #}
+
+<div class="flex items-center gap-2 mb-5">
+    <a href="/profesional/agenda?vista=mes&fecha={{ mes_anterior }}"
+        class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <h2 class="text-base font-semibold text-slate-700 dark:text-slate-300 px-2">
+        {{ fecha_obj.strftime('%B %Y').capitalize() }}
+    </h2>
+    <a href="/profesional/agenda?vista=mes&fecha={{ mes_siguiente }}"
+        class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+    </a>
+    <a href="/profesional/agenda?vista=mes"
+        class="px-3 py-2 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-medium hover:bg-sky-100 transition-colors ml-1">Este mes</a>
+</div>
+
+{% if turnos_mes %}
+<div class="space-y-4">
+    {% for fecha_dia, turnos_dia in turnos_mes.items() %}
+    {% set fecha_parsed = fecha_dia %}
+    <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div class="px-5 py-3 bg-slate-50 dark:bg-slate-800/60 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between">
+            <h3 class="font-semibold text-slate-800 dark:text-slate-200 text-sm">
+                {{ turnos_dia[0].fecha | fecha_es }}
+            </h3>
+            <div class="flex items-center gap-2 text-xs text-slate-500">
+                <span>{{ turnos_dia | length }} turno(s)</span>
+                {% if turnos_dia | selectattr('tipo', 'eq', 'sobreturno') | list | length > 0 %}
+                <span class="text-amber-600 dark:text-amber-400">⚡ {{ turnos_dia | selectattr('tipo', 'eq', 'sobreturno') | list | length }} sobreturno(s)</span>
+                {% endif %}
+            </div>
+        </div>
+        <div class="divide-y divide-slate-100 dark:divide-slate-800">
+            {% for t in turnos_dia %}
+            <div class="px-5 py-3 flex items-center gap-4 {% if t.tipo == 'sobreturno' %}bg-amber-50/50 dark:bg-amber-900/10{% endif %}">
+                <span class="text-xs font-bold text-slate-400 w-10 flex-shrink-0">{{ t.hora }}</span>
+                <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
+                    {% if t.tipo == 'sobreturno' %}bg-amber-100 dark:bg-amber-900/40{% else %}bg-sky-100 dark:bg-sky-900/30{% endif %}">
+                    <span class="text-xs font-semibold {% if t.tipo == 'sobreturno' %}text-amber-700 dark:text-amber-400{% else %}text-sky-700 dark:text-sky-400{% endif %}">{{ t.paciente.nombre[0] }}{{ t.paciente.apellido[0] }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <div class="flex items-center gap-2 flex-wrap">
+                        <span class="font-medium text-slate-800 dark:text-slate-200 text-sm">{{ t.paciente.apellido }}, {{ t.paciente.nombre }}</span>
+                        {% if t.tipo == 'sobreturno' %}<span class="text-xs font-semibold text-amber-700 dark:text-amber-400">⚡ SOBRETURNO</span>{% endif %}
+                        {% if t.tipo_consulta == 'particular' %}<span class="px-1.5 py-0.5 rounded text-xs bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300">Particular</span>{% endif %}
+                    </div>
+                    <p class="text-xs text-slate-400 mt-0.5">{{ t.especialidad }}{% if t.paciente.obra_social and t.tipo_consulta != 'particular' %} · {{ t.paciente.obra_social }}{% endif %}</p>
+                </div>
+                <span class="px-2 py-0.5 rounded-full text-xs font-medium badge-{{ t.estado }} flex-shrink-0">{{ t.estado | capitalize }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 py-14 text-center">
+    <p class="text-slate-400 text-sm">No tenés turnos asignados para este mes.</p>
+</div>
+{% endif %}
+
+{% if dias_libres %}
+<div class="mt-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+    <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
+        <svg class="w-4 h-4 text-emerald-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        Días disponibles del mes ({{ dias_libres | length }})
+    </h3>
+    <div class="flex flex-wrap gap-2">
+        {% for d in dias_libres %}
+        <a href="/profesional/agenda?vista=dia&fecha={{ d }}"
+            class="px-3 py-1.5 rounded-lg border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-400 text-xs font-medium hover:bg-emerald-100 transition-colors">
+            {{ d | fecha_corta_es }}
+        </a>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+{% endif %}
+{% endblock %}

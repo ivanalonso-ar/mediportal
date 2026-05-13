@@ -1,0 +1,171 @@
+{% extends "base_admin.html" %}
+{% set active_page = "resultados" %}
+{% block title %}Resultados — MediPortal Admin{% endblock %}
+{% block page_title %}Resultados{% endblock %}
+
+{% block content %}
+
+{% if msg %}
+<div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border
+    {% if msg_tipo == 'success' %}bg-emerald-50 dark:bg-emerald-900/30 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300
+    {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
+    {{ msg }}
+</div>
+{% endif %}
+
+<div class="flex items-center justify-between mb-5">
+    <p class="text-sm text-slate-500 dark:text-slate-400">{{ resultados | length }} resultado(s) registrado(s)</p>
+    <button onclick="toggleModal('modal-subir')"
+        class="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors shadow-sm">
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/>
+        </svg>
+        Subir resultado
+    </button>
+</div>
+
+<!-- Lista -->
+<div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 overflow-hidden">
+    {% if resultados %}
+    <div class="divide-y divide-slate-100 dark:divide-slate-800">
+        {% for r in resultados %}
+        <div class="px-5 py-4 flex items-start justify-between gap-4">
+            <div class="flex items-start gap-4">
+                <div class="w-10 h-10 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <svg class="w-5 h-5 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                </div>
+                <div>
+                    <p class="font-medium text-slate-800 dark:text-slate-200">{{ r.titulo }}</p>
+                    <p class="text-sm text-accent-700 dark:text-accent-400 mt-0.5">{{ r.paciente.apellido }}, {{ r.paciente.nombre }}</p>
+                    <div class="flex items-center gap-2 text-xs text-slate-400 mt-0.5 flex-wrap">
+                        {% if r.fecha_estudio %}<span>Estudio: {{ r.fecha_estudio }}</span>{% endif %}
+                        {% if r.subido_por %}<span class="text-slate-300 dark:text-slate-600">·</span><span>Subido por: {{ r.subido_por }}</span>{% endif %}
+                        {% if not r.archivo_path %}
+                        <span class="text-slate-300 dark:text-slate-600">·</span>
+                        <span class="text-amber-500">Sin archivo adjunto</span>
+                        {% endif %}
+                    </div>
+                    {% if r.descripcion %}
+                    <p class="text-xs text-slate-400 dark:text-slate-500 mt-1 italic">{{ r.descripcion[:100] }}{% if r.descripcion|length > 100 %}...{% endif %}</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="flex items-center gap-2 flex-shrink-0">
+                {% if r.archivo_path %}
+                <a href="/paciente/resultados/descargar/{{ r.id }}" target="_blank"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                    </svg>
+                    Ver PDF
+                </a>
+                {% endif %}
+                <form method="post" action="/admin/resultados/eliminar/{{ r.id }}" class="inline">
+                    <button type="submit"
+                        onclick="return confirm('¿Eliminar este resultado? Esta acción no se puede deshacer.')"
+                        class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+                        </svg>
+                    </button>
+                </form>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="py-12 text-center text-slate-400 text-sm">No hay resultados cargados aún.</div>
+    {% endif %}
+</div>
+
+
+<!-- Modal: Subir resultado -->
+<div id="modal-subir" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="toggleModal('modal-subir')"></div>
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="font-semibold text-slate-800 dark:text-slate-100">Subir resultado</h2>
+            <button onclick="toggleModal('modal-subir')" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+            </button>
+        </div>
+
+        <form method="post" action="/admin/resultados/subir" enctype="multipart/form-data" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Paciente *</label>
+                <select name="paciente_id" required
+                    class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <option value="">Seleccioná un paciente</option>
+                    {% for p in pacientes %}
+                    <option value="{{ p.id }}">{{ p.apellido }}, {{ p.nombre }} ({{ p.dni }})</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Título del estudio *</label>
+                <input type="text" name="titulo" required placeholder="Ej: Hemograma completo"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+            </div>
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha del estudio</label>
+                    <input type="date" name="fecha_estudio"
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div class="flex flex-col justify-end">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descripción / Observaciones</label>
+                <textarea name="descripcion" rows="2" placeholder="Resumen del resultado..."
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Archivo PDF *</label>
+                <div id="drop-zone"
+                    class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-accent-400 transition-colors"
+                    onclick="document.getElementById('archivo-input').click()">
+                    <svg class="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+                    </svg>
+                    <p id="file-label" class="text-sm text-slate-500 dark:text-slate-400">Hacé clic para seleccionar un PDF</p>
+                    <p class="text-xs text-slate-400 mt-1">Solo archivos .pdf</p>
+                </div>
+                <input type="file" name="archivo" id="archivo-input" accept=".pdf" required class="hidden">
+            </div>
+
+            <div class="flex gap-3 pt-1">
+                <button type="button" onclick="toggleModal('modal-subir')"
+                    class="flex-1 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 py-2.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors">
+                    Subir resultado
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+
+document.getElementById('archivo-input').addEventListener('change', function() {
+    const label = document.getElementById('file-label');
+    label.textContent = this.files[0] ? this.files[0].name : 'Hacé clic para seleccionar un PDF';
+    if (this.files[0]) {
+        document.getElementById('drop-zone').classList.add('border-accent-500');
+    }
+});
+</script>
+{% endblock %}
