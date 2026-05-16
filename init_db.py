@@ -1,229 +1,194 @@
 """
-Script para inicializar la base de datos con datos de prueba.
-Ejecutar UNA sola vez: python init_db.py
+Inicializa la base PostgreSQL/Supabase.
+
+Uso:
+    python init_db.py
+    python init_db.py --no-catalogos
 """
-import datetime
-from database import engine, SessionLocal
-import models
+
+from __future__ import annotations
+
+import argparse
+import secrets
+from pathlib import Path
+
+from sqlalchemy import text
+
 from auth import get_password_hash
+from database import SessionLocal, engine
+from horarios import DEFAULT_PROFESIONALES
+from models import (
+    Base,
+    ConfiguracionClinica,
+    Especialidad,
+    ObraSocial,
+    ProfesionalEspecialidad,
+    UsuarioStaff,
+)
+from obras_sociales import DEFAULT_OBRAS_SOCIALES
 
-models.Base.metadata.create_all(bind=engine)
+ROOT = Path(__file__).resolve().parent
+MIGRATIONS_DIR = ROOT / "migrations"
 
-db = SessionLocal()
 
-try:
-    # ─── Staff ────────────────────────────────────────────────────────────────
-    if not db.query(models.UsuarioStaff).first():
-        # Admin y recepción
-        staff_base = [
-            models.UsuarioStaff(nombre="Admin", apellido="Principal",
-                email="admin@mediportal.com", password_hash=get_password_hash("admin123"),
-                rol="admin", activo=True),
-            models.UsuarioStaff(nombre="Laura", apellido="Gómez",
-                email="recepcion@mediportal.com", password_hash=get_password_hash("recep123"),
-                rol="recepcion", activo=True),
-        ]
+def run_migrations() -> None:
+    if engine.dialect.name == "sqlite":
+        Base.metadata.create_all(bind=engine)
+        print("OK schema SQLite local creado via SQLAlchemy")
+        return
 
-        # Todos los profesionales de la clínica
-        # Formato nombre/apellido según como aparecen en el campo profesional de Turno:
-        # "Dr. García, Roberto" → nombre="García", apellido="Roberto", pero para el login
-        # usamos email derivado. El campo profesional del turno debe matchear exactamente.
-        profesionales_data = [
-            # Cardiología
-            ("Roberto",   "García",      "r.garcia@mediportal.com",    "med123"),
-            ("Susana",    "Molina",      "s.molina@mediportal.com",    "med123"),
-            # Clínica Médica
-            ("Luis",      "Romero",      "l.romero@mediportal.com",    "med123"),
-            ("Ana",       "Pedraza",     "a.pedraza@mediportal.com",   "med123"),
-            ("Marcelo",   "Figueroa",    "m.figueroa@mediportal.com",  "med123"),
-            # Dermatología
-            ("Claudia",   "Martínez",    "c.martinez@mediportal.com",  "med123"),
-            # Endocrinología
-            ("Pablo",     "Fernández",   "p.fernandez@mediportal.com", "med123"),
-            ("Patricia",  "Ríos",        "p.rios@mediportal.com",      "med123"),
-            # Gastroenterología
-            ("Gabriela",  "López",       "g.lopez@mediportal.com",     "med123"),
-            ("Sebastián", "Torres",      "s.torres@mediportal.com",    "med123"),
-            ("Roxana",    "Blanco",      "r.blanco@mediportal.com",    "med123"),
-            # Ginecología
-            ("María",     "Benítez",     "m.benitez@mediportal.com",   "med123"),
-            ("Valeria",   "Sánchez",     "v.sanchez@mediportal.com",   "med123"),
-            ("Lorena",    "Cabrera",     "l.cabrera@mediportal.com",   "med123"),
-            # Neurología
-            ("Gonzalo",   "Herrera",     "g.herrera@mediportal.com",   "med123"),
-            ("Beatriz",   "Quiroga",     "b.quiroga@mediportal.com",   "med123"),
-            # Oftalmología
-            ("Andrés",    "Vega",        "a.vega@mediportal.com",      "med123"),
-            ("Lucía",     "Castro",      "l.castro@mediportal.com",    "med123"),
-            ("Tomás",     "Salinas",     "t.salinas@mediportal.com",   "med123"),
-            ("Elena",     "Medina",      "e.medina@mediportal.com",    "med123"),
-            # Ortopedia
-            ("Diego",     "Morales",     "d.morales@mediportal.com",   "med123"),
-            ("Nicolás",   "Acosta",      "n.acosta@mediportal.com",    "med123"),
-            # Otorrinolaringología
-            ("Carmen",    "Ríos",        "c.rios@mediportal.com",      "med123"),
-            # Pediatría
-            ("Javier",    "Mendoza",     "j.mendoza@mediportal.com",   "med123"),
-            ("Sofía",     "Guerrero",    "s.guerrero@mediportal.com",  "med123"),
-            ("Natalia",   "Vargas",      "n.vargas@mediportal.com",    "med123"),
-            # Psicología
-            ("Carolina",  "Suárez",      "c.suarez@mediportal.com",    "med123"),
-            ("Rodrigo",   "Muñoz",       "r.munoz@mediportal.com",     "med123"),
-            # Psiquiatría
-            ("Héctor",    "Núñez",       "h.nunez@mediportal.com",     "med123"),
-            ("Silvia",    "Ibarra",      "s.ibarra@mediportal.com",    "med123"),
-            # Reumatología
-            ("Marta",     "Ibáñez",      "m.ibanez@mediportal.com",    "med123"),
-            # Traumatología
-            ("Esteban",   "Domínguez",   "e.dominguez@mediportal.com", "med123"),
-            ("Miguel",    "Paredes",     "m.paredes@mediportal.com",   "med123"),
-            # Urología
-            ("Omar",      "Villanueva",  "o.villanueva@mediportal.com","med123"),
-            ("Florencia", "Rojas",       "f.rojas@mediportal.com",     "med123"),
-        ]
+    sql_files = sorted(MIGRATIONS_DIR.glob("*.sql"))
+    if not sql_files:
+        raise RuntimeError(f"No hay migrations SQL en {MIGRATIONS_DIR}")
 
-        profs_staff = [
-            models.UsuarioStaff(
-                nombre=nombre, apellido=apellido, email=email,
-                password_hash=get_password_hash(pw),
-                rol="profesional", activo=True
-            )
-            for nombre, apellido, email, pw in profesionales_data
-        ]
+    with engine.begin() as conn:
+        for path in sql_files:
+            sql = path.read_text(encoding="utf-8")
+            conn.exec_driver_sql(sql)
+            print(f"OK migration: {path.name}")
 
-        db.add_all(staff_base + profs_staff)
-        db.commit()
-        print(f"✓ Staff creado: 2 admin/recepción + {len(profs_staff)} profesionales")
 
-    # ─── Pacientes ────────────────────────────────────────────────────────────
-    if not db.query(models.Paciente).first():
-        p1 = models.Paciente(
-            dni="30000001",
-            nombre="Juan",
-            apellido="Pérez",
-            email="juan.perez@email.com",
-            telefono="11-1234-5678",
-            fecha_nacimiento="1985-03-15",
-            obra_social="OSDE",
-            password_hash=get_password_hash("paciente123"),
-            primer_login=False,
+def ensure_configuracion_base(
+    db,
+    *,
+    nombre: str = "MediPortal",
+    slug: str = "mediportal",
+    timezone: str = "America/Argentina/Buenos_Aires",
+    email: str = "",
+    telefono: str = "",
+    direccion: str = "",
+) -> ConfiguracionClinica:
+    config = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.slug == slug).first()
+    if not config:
+        config = ConfiguracionClinica(
+            nombre=nombre,
+            slug=slug,
+            timezone=timezone,
+            email=email or None,
+            telefono=telefono or None,
+            direccion=direccion or None,
+        )
+        db.add(config)
+    else:
+        config.nombre = nombre
+        config.timezone = timezone
+        config.email = email or config.email
+        config.telefono = telefono or config.telefono
+        config.direccion = direccion or config.direccion
+    return config
+
+
+def seed_obras_sociales(db) -> int:
+    creadas = 0
+    for nombre in DEFAULT_OBRAS_SOCIALES:
+        if not nombre.strip():
+            continue
+        exists = db.query(ObraSocial).filter(ObraSocial.nombre == nombre).first()
+        if not exists:
+            db.add(ObraSocial(nombre=nombre.strip(), tipo="obra_social", activa=True))
+            creadas += 1
+    return creadas
+
+
+def seed_especialidades(db) -> int:
+    especialidades_creadas = 0
+    for orden, (nombre_esp, profesionales) in enumerate(sorted(DEFAULT_PROFESIONALES.items()), start=1):
+        especialidad = db.query(Especialidad).filter(Especialidad.nombre == nombre_esp).first()
+        if not especialidad:
+            especialidad = Especialidad(nombre=nombre_esp, activa=True, orden=orden)
+            db.add(especialidad)
+            db.flush()
+            especialidades_creadas += 1
+    return especialidades_creadas
+
+
+def seed_especialidades_y_profesionales(db) -> tuple[int, int, int]:
+    especialidades_creadas = seed_especialidades(db)
+    staff_creado = 0
+    relaciones_creadas = 0
+
+    for nombre_esp, profesionales in sorted(DEFAULT_PROFESIONALES.items()):
+        especialidad = db.query(Especialidad).filter(Especialidad.nombre == nombre_esp).first()
+        for prof in profesionales:
+            email = prof["email"].lower()
+            staff = db.query(UsuarioStaff).filter(UsuarioStaff.email == email).first()
+            if not staff:
+                staff = UsuarioStaff(
+                    nombre=prof["nombre_staff"],
+                    apellido=prof["apellido_staff"],
+                    email=email,
+                    password_hash=get_password_hash(secrets.token_urlsafe(24)),
+                    rol="profesional",
+                    activo=True,
+                )
+                db.add(staff)
+                db.flush()
+                staff_creado += 1
+
+            relacion = db.query(ProfesionalEspecialidad).filter(
+                ProfesionalEspecialidad.profesional_id == staff.id,
+                ProfesionalEspecialidad.especialidad_id == especialidad.id,
+            ).first()
+            if not relacion:
+                db.add(ProfesionalEspecialidad(
+                    profesional_id=staff.id,
+                    especialidad_id=especialidad.id,
+                    nombre_publico=prof["nombre"],
+                    turno=prof["turno"],
+                    activo=True,
+                ))
+                relaciones_creadas += 1
+
+    return especialidades_creadas, staff_creado, relaciones_creadas
+
+
+def create_admin(db, *, email: str, password: str, nombre: str = "Admin", apellido: str = "Principal") -> UsuarioStaff:
+    admin = db.query(UsuarioStaff).filter(UsuarioStaff.email == email.lower()).first()
+    if not admin:
+        admin = UsuarioStaff(
+            nombre=nombre.strip() or "Admin",
+            apellido=apellido.strip() or "Principal",
+            email=email.lower(),
+            password_hash=get_password_hash(password),
+            rol="admin",
             activo=True,
         )
-        p2 = models.Paciente(
-            dni="35000002",
-            nombre="María",
-            apellido="González",
-            email="maria.g@email.com",
-            telefono="11-9876-5432",
-            fecha_nacimiento="1992-07-22",
-            obra_social="Swiss Medical",
-            password_hash=get_password_hash("paciente123"),
-            primer_login=True,  # Debe cambiar contraseña
-            activo=True,
-        )
-        p3 = models.Paciente(
-            dni="28000003",
-            nombre="Carlos",
-            apellido="Rodríguez",
-            email="carlos.r@email.com",
-            telefono="11-5555-1234",
-            fecha_nacimiento="1978-11-10",
-            obra_social="Galeno",
-            password_hash=get_password_hash("paciente123"),
-            primer_login=False,
-            activo=True,
-        )
-        db.add_all([p1, p2, p3])
+        db.add(admin)
+    else:
+        admin.nombre = nombre.strip() or admin.nombre
+        admin.apellido = apellido.strip() or admin.apellido
+        admin.password_hash = get_password_hash(password)
+        admin.rol = "admin"
+        admin.activo = True
+    return admin
+
+
+def initialize_database(seed_catalogos: bool = True) -> None:
+    run_migrations()
+
+    db = SessionLocal()
+    try:
+        ensure_configuracion_base(db)
+        if seed_catalogos:
+            obras = seed_obras_sociales(db)
+            especialidades, staff, relaciones = seed_especialidades_y_profesionales(db)
+            print(f"OK catalogos: {obras} obras sociales, {especialidades} especialidades, {staff} profesionales, {relaciones} relaciones")
         db.commit()
+        db.execute(text("select 1"))
+        print("OK base inicializada")
+    except Exception:
+        db.rollback()
+        raise
+    finally:
+        db.close()
 
-        # ─── Turnos ───────────────────────────────────────────────────────────
-        hoy = datetime.date.today()
-        turnos = [
-            models.Turno(
-                paciente_id=p1.id,
-                fecha=(hoy + datetime.timedelta(days=3)).strftime("%Y-%m-%d"),
-                hora="09:30",
-                especialidad="Cardiología",
-                profesional="Dr. Carlos Méndez",
-                estado="confirmado",
-                observaciones="Control anual",
-            ),
-            models.Turno(
-                paciente_id=p1.id,
-                fecha=(hoy - datetime.timedelta(days=10)).strftime("%Y-%m-%d"),
-                hora="14:00",
-                especialidad="Clínica Médica",
-                profesional="Dra. Ana Soria",
-                estado="completado",
-            ),
-            models.Turno(
-                paciente_id=p3.id,
-                fecha=hoy.strftime("%Y-%m-%d"),
-                hora="10:00",
-                especialidad="Neurología",
-                estado="pendiente",
-            ),
-            models.Turno(
-                paciente_id=p3.id,
-                fecha=(hoy + datetime.timedelta(days=7)).strftime("%Y-%m-%d"),
-                hora="11:30",
-                especialidad="Oftalmología",
-                profesional="Dr. Luis Vega",
-                estado="confirmado",
-            ),
-        ]
-        db.add_all(turnos)
-        db.commit()
 
-        # ─── Resultados (sin archivo, solo demo) ──────────────────────────────
-        resultados = [
-            models.Resultado(
-                paciente_id=p1.id,
-                titulo="Electrocardiograma",
-                descripcion="ECG en reposo. Ritmo sinusal normal.",
-                fecha_estudio=(hoy - datetime.timedelta(days=10)).strftime("%Y-%m-%d"),
-                subido_por="Dr. Carlos Méndez",
-                archivo_nombre=None,
-                archivo_path=None,
-            ),
-            models.Resultado(
-                paciente_id=p1.id,
-                titulo="Análisis de Sangre Completo",
-                descripcion="Hemograma, glucemia, colesterol. Ver informe adjunto.",
-                fecha_estudio=(hoy - datetime.timedelta(days=30)).strftime("%Y-%m-%d"),
-                subido_por="Lab. Central",
-                archivo_nombre=None,
-                archivo_path=None,
-            ),
-            models.Resultado(
-                paciente_id=p3.id,
-                titulo="Resonancia Magnética Cerebral",
-                descripcion="Sin hallazgos patológicos.",
-                fecha_estudio=(hoy - datetime.timedelta(days=5)).strftime("%Y-%m-%d"),
-                subido_por="Dr. Carlos Méndez",
-                archivo_nombre=None,
-                archivo_path=None,
-            ),
-        ]
-        db.add_all(resultados)
-        db.commit()
-        print("✓ Pacientes, turnos y resultados de prueba creados")
+def main() -> None:
+    parser = argparse.ArgumentParser(description="Inicializa schema y catalogos base en Supabase/PostgreSQL.")
+    parser.add_argument("--no-catalogos", action="store_true", help="Solo corre migrations y configuracion base.")
+    args = parser.parse_args()
+    initialize_database(seed_catalogos=not args.no_catalogos)
 
-    print("\n✅ Base de datos inicializada correctamente.")
-    print("\n─── Credenciales de acceso ───────────────────────────────")
-    print("ADMIN:    admin@mediportal.com     /  admin123")
-    print("RECEP:    recepcion@mediportal.com /  recep123")
-    print("MÉDICOS:  [nombre]@mediportal.com  /  med123")
-    print("          (ver lista completa en init_db.py)")
-    print("")
-    print("PACIENTE: DNI 30000001  /  paciente123  (acceso directo)")
-    print("PACIENTE: DNI 35000002  /  paciente123  (debe cambiar contraseña)")
-    print("PACIENTE: DNI 28000003  /  paciente123  (acceso directo)")
-    print("──────────────────────────────────────────────────────────")
 
-except Exception as e:
-    print(f"❌ Error: {e}")
-    db.rollback()
-    raise
-finally:
-    db.close()
+if __name__ == "__main__":
+    main()

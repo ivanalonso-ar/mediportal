@@ -8,9 +8,9 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Paciente, UsuarioStaff, Turno, TurnoLog, Resultado, Aviso
-from obras_sociales import OBRAS_SOCIALES
+from obras_sociales import listar_obras_sociales
 from notif_utils import crear_notificacion
-from horarios import ESPECIALIDADES, TURNO_POR_ESPECIALIDAD, SLOTS_MANANA, SLOTS_TARDE, profesionales_json
+from horarios import catalogo_horarios
 from disponibilidad import hora_disponible
 from auth import get_current_user, get_password_hash
 from mail import mail_bienvenida, mail_turno_confirmado, mail_turno_cancelado, mail_resultado_disponible, mail_registro_aprobado, mail_registro_rechazado
@@ -304,17 +304,18 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
     profesionales = db.query(UsuarioStaff).filter(
         UsuarioStaff.rol == "profesional", UsuarioStaff.activo == True
     ).order_by(UsuarioStaff.apellido).all()
+    catalogo = catalogo_horarios(db)
 
     return templates.TemplateResponse("admin/turnos.html", {
         "request": request, "user": user,
         "turnos": turnos, "pacientes": pacientes,
         "profesionales": profesionales,
-        "especialidades": ESPECIALIDADES,
-        "obras_sociales": OBRAS_SOCIALES,
-        "turno_por_especialidad": TURNO_POR_ESPECIALIDAD,
-        "slots_manana": SLOTS_MANANA,
-        "slots_tarde": SLOTS_TARDE,
-        "profesionales_json": profesionales_json(),
+        "especialidades": catalogo["especialidades"],
+        "obras_sociales": listar_obras_sociales(db),
+        "turno_por_especialidad": catalogo["turno_por_especialidad"],
+        "slots_manana": catalogo["slots_manana"],
+        "slots_tarde": catalogo["slots_tarde"],
+        "profesionales_json": catalogo["profesionales_json"],
         "today": __import__("datetime").date.today().strftime("%Y-%m-%d"),
         "estados": ESTADOS_TURNO,
         "filtro_estado": filtro_estado,
@@ -355,7 +356,7 @@ async def agenda_page(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("admin/agenda.html", {
         "request": request, "user": user,
-        "turno_por_especialidad": TURNO_POR_ESPECIALIDAD,
+        "turno_por_especialidad": catalogo_horarios(db)["turno_por_especialidad"],
         "turnos": turnos,
         "fecha": fecha_str,
         "fecha_obj": fecha_obj,

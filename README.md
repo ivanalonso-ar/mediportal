@@ -24,15 +24,31 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-### 3. Inicializar la base de datos con datos de prueba
+### 3. Configurar base de datos
+
+Para produccion por cliente, crear un proyecto Supabase y configurar:
+
+```bash
+DATABASE_URL=postgresql+psycopg2://postgres.<project-ref>:<password>@aws-0-us-east-1.pooler.supabase.com:6543/postgres?sslmode=require
+SUPABASE_URL=https://<project-ref>.supabase.co
+SUPABASE_KEY=<service-role-o-anon-key-segun-uso>
+```
+
+### 4. Inicializar schema/catalogos
 
 ```bash
 python init_db.py
 ```
 
-Esto crea `mediportal.db` con usuarios y datos de ejemplo.
+Esto corre las migrations SQL y carga configuracion/catalogos base.
 
-### 4. Correr el servidor
+### 5. Provisionar un cliente nuevo
+
+```bash
+python setup_cliente.py --clinica "Centro Medico Norte" --slug centro-norte --admin-email admin@centronorte.com --admin-password "una-clave-segura-123"
+```
+
+### 6. Correr el servidor
 
 ```bash
 uvicorn main:app --reload
@@ -44,19 +60,8 @@ Abrí el navegador en: **http://localhost:8000**
 
 ## Credenciales de acceso
 
-### Staff / Admin (tab "Staff / Admin" en el login)
-| Email                        | Contraseña  | Rol          |
-|------------------------------|-------------|--------------|
-| admin@mediportal.com         | admin123    | Admin        |
-| recepcion@mediportal.com     | recep123    | Recepción    |
-| medico@mediportal.com        | medico123   | Profesional  |
-
-### Pacientes (tab "Paciente" en el login, ingresar DNI)
-| DNI       | Contraseña   | Nota                             |
-|-----------|--------------|----------------------------------|
-| 30000001  | paciente123  | Acceso directo                   |
-| 35000002  | paciente123  | Debe cambiar contraseña (demo)   |
-| 28000003  | paciente123  | Acceso directo                   |
+El admin inicial se define por cliente con `setup_cliente.py` usando `--admin-email` y `--admin-password`.
+No hay pacientes demo en el flujo de provisioning de Supabase.
 
 ---
 
@@ -113,8 +118,8 @@ mediportal/
 
 ---
 
-## Para producción (próximos pasos)
-- Cambiar `SECRET_KEY` en `auth.py`
-- Migrar de SQLite a PostgreSQL (Supabase)
-- Usar variables de entorno (`.env`)
-- Deploy en Render
+## Para produccion
+- Cambiar `SECRET_KEY` por cliente en `.env`
+- Usar `DATABASE_URL` de Supabase/PostgreSQL por cliente
+- Ejecutar `setup_cliente.py` una vez por deploy/cliente
+- Mover resultados PDF a Supabase Storage si el filesystem del host no es persistente

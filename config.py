@@ -25,6 +25,9 @@ class Settings:
     # App
     APP_NAME: str = os.getenv("APP_NAME", "MediPortal")
     APP_URL: str = os.getenv("APP_URL", "http://localhost:8000")
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./mediportal.db")
+    SUPABASE_URL: str = os.getenv("SUPABASE_URL", "")
+    SUPABASE_KEY: str = os.getenv("SUPABASE_KEY", "")
 
     # Email
     MAIL_ENABLED: bool = os.getenv("MAIL_ENABLED", "false").lower() == "true"

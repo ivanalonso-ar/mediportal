@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -37,6 +37,71 @@ class UsuarioStaff(Base):
     activo = Column(Boolean, default=True)
     atiende_particular = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ConfiguracionClinica(Base):
+    __tablename__ = "configuracion_clinica"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(150), nullable=False, default="MediPortal")
+    slug = Column(String(80), unique=True, nullable=False, default="mediportal")
+    timezone = Column(String(80), nullable=False, default="America/Argentina/Buenos_Aires")
+    telefono = Column(String(50))
+    email = Column(String(200))
+    direccion = Column(String(250))
+    sitio_web = Column(String(250))
+    logo_url = Column(String(500))
+    color_primario = Column(String(20), default="#0284c7")
+    duracion_slot_minutos = Column(Integer, default=20)
+    hora_inicio_manana = Column(String(5), default="08:00")
+    hora_fin_manana = Column(String(5), default="14:00")
+    hora_inicio_tarde = Column(String(5), default="14:00")
+    hora_fin_tarde = Column(String(5), default="19:00")
+    permite_sobreturnos = Column(Boolean, default=True)
+    permite_turnos_particulares = Column(Boolean, default=True)
+    requiere_aprobacion_pacientes = Column(Boolean, default=False)
+    cancelacion_horas_minimas = Column(Integer, default=24)
+    upload_dir_resultados = Column(String(300), default="uploads/resultados")
+    activo = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
+
+
+class Especialidad(Base):
+    __tablename__ = "especialidades"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(120), nullable=False, unique=True, index=True)
+    descripcion = Column(Text)
+    activa = Column(Boolean, default=True)
+    orden = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ObraSocial(Base):
+    __tablename__ = "obras_sociales"
+
+    id = Column(Integer, primary_key=True, index=True)
+    nombre = Column(String(160), nullable=False, unique=True, index=True)
+    tipo = Column(String(60), default="obra_social")
+    activa = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+
+class ProfesionalEspecialidad(Base):
+    __tablename__ = "profesionales_especialidades"
+    __table_args__ = (UniqueConstraint("profesional_id", "especialidad_id", name="uq_profesional_especialidad"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    profesional_id = Column(Integer, ForeignKey("usuarios_staff.id"), nullable=False)
+    especialidad_id = Column(Integer, ForeignKey("especialidades.id"), nullable=False)
+    nombre_publico = Column(String(160), nullable=False)
+    turno = Column(String(20), nullable=False, default="manana")
+    activo = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    profesional = relationship("UsuarioStaff")
+    especialidad = relationship("Especialidad")
 
 
 class Turno(Base):

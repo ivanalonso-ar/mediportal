@@ -6,8 +6,8 @@ from sqlalchemy.orm import Session
 
 from database import get_db
 from models import Paciente, Turno, Resultado, Aviso
-from obras_sociales import OBRAS_SOCIALES
-from horarios import ESPECIALIDADES, TURNO_POR_ESPECIALIDAD, SLOTS_MANANA, SLOTS_TARDE
+from obras_sociales import listar_obras_sociales
+from horarios import catalogo_horarios
 from disponibilidad import hora_disponible, horas_sin_disponibilidad
 from notif_utils import crear_notificacion
 from models import Notificacion
@@ -40,14 +40,15 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
     ).order_by(Turno.fecha.desc(), Turno.hora.desc()).all()
 
     avisos = db.query(Aviso).filter(Aviso.activo == True).order_by(Aviso.orden.asc()).all()
+    catalogo = catalogo_horarios(db)
 
     notif_no_leidas = db.query(Notificacion).filter(Notificacion.paciente_id == int(user["sub"]), Notificacion.leido == False).count()
     return templates.TemplateResponse("paciente/turnos.html", {
         "request": request, "user": user, "notif_no_leidas": notif_no_leidas, "paciente": paciente,
-        "turnos": turnos, "especialidades": ESPECIALIDADES,
-        "turno_por_especialidad": TURNO_POR_ESPECIALIDAD,
-        "slots_manana": SLOTS_MANANA,
-        "slots_tarde": SLOTS_TARDE,
+        "turnos": turnos, "especialidades": catalogo["especialidades"],
+        "turno_por_especialidad": catalogo["turno_por_especialidad"],
+        "slots_manana": catalogo["slots_manana"],
+        "slots_tarde": catalogo["slots_tarde"],
         "avisos": avisos,
         "msg": request.query_params.get("msg", ""),
         "msg_tipo": request.query_params.get("tipo", ""),
@@ -189,7 +190,7 @@ async def perfil_page(request: Request, db: Session = Depends(get_db)):
     notif_no_leidas = db.query(Notificacion).filter(Notificacion.paciente_id == int(user["sub"]), Notificacion.leido == False).count()
     return templates.TemplateResponse("paciente/perfil.html", {
         "request": request, "user": user, "notif_no_leidas": notif_no_leidas, "paciente": paciente,
-        "obras_sociales": OBRAS_SOCIALES,
+        "obras_sociales": listar_obras_sociales(db),
         "msg": request.query_params.get("msg", ""),
         "msg_tipo": request.query_params.get("tipo", ""),
     })

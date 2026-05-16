@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
 from database import get_db
-from models import Paciente, UsuarioStaff
+from models import ConfiguracionClinica, Paciente, UsuarioStaff
 from auth import verify_password, get_password_hash, create_access_token, get_current_user
 from mail import mail_cambio_password, mail_registro_pendiente_staff, mail_registro_aprobado, mail_registro_rechazado
 
@@ -157,12 +157,12 @@ async def cambiar_password_post(
 # ─── Registro público ─────────────────────────────────────────────────────────
 
 @router.get("/registro", response_class=HTMLResponse)
-async def registro_page(request: Request):
+async def registro_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
     if user:
         return RedirectResponse(url="/paciente/turnos" if user.get("tipo") == "paciente" else "/admin/", status_code=302)
-    from obras_sociales import OBRAS_SOCIALES
-    return templates.TemplateResponse("registro.html", {"request": request, "obras_sociales": OBRAS_SOCIALES})
+    from obras_sociales import listar_obras_sociales
+    return templates.TemplateResponse("registro.html", {"request": request, "obras_sociales": listar_obras_sociales(db)})
 
 
 @router.post("/registro")
@@ -180,10 +180,10 @@ async def registro_post(
     db: Session = Depends(get_db)
 ):
     def error(msg):
-        from obras_sociales import OBRAS_SOCIALES
+        from obras_sociales import listar_obras_sociales
         return templates.TemplateResponse("registro.html", {
             "request": request, "error": msg,
-            "obras_sociales": OBRAS_SOCIALES,
+            "obras_sociales": listar_obras_sociales(db),
             "form": {"dni": dni, "nombre": nombre, "apellido": apellido,
                      "email": email, "telefono": telefono,
                      "fecha_nacimiento": fecha_nacimiento, "obra_social": obra_social}
@@ -198,6 +198,9 @@ async def registro_post(
     if existente:
         return error("Ya existe una cuenta con ese DNI. Si olvidaste tu contraseña, contactá a la clínica.")
 
+    config = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.activo == True).first()
+    aprobado = not (config and config.requiere_aprobacion_pacientes)
+
     paciente = Paciente(
         dni=dni.strip(), nombre=nombre.strip(), apellido=apellido.strip(),
         email=email.strip(), telefono=telefono.strip(),
@@ -205,10 +208,19 @@ async def registro_post(
         password_hash=get_password_hash(password),
         primer_login=False,
         activo=True,
-        aprobado=True,  # aprobación automática
+        aprobado=aprobado,
     )
     db.add(paciente)
     db.commit()
+
+    if not aprobado:
+        admin = db.query(UsuarioStaff).filter(
+            UsuarioStaff.rol == "admin",
+            UsuarioStaff.activo == True,
+        ).order_by(UsuarioStaff.id.asc()).first()
+        if admin and admin.email:
+            mail_registro_pendiente_staff(admin.email, f"{nombre.strip()} {apellido.strip()}".strip(), dni.strip())
+        return RedirectResponse(url="/login?msg=Registro+pendiente+de+aprobacion.&tipo=success", status_code=302)
 
     # Login automático después del registro
     token = create_access_token({
