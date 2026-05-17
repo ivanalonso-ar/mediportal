@@ -32,12 +32,12 @@
 
         <!-- Icono según tipo -->
         <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5
-            {% if n.tipo == 'turno_confirmado' %}bg-emerald-100 dark:bg-emerald-900/40
+            {% if n.tipo == 'turno_confirmado' %}bg-blue-100 dark:bg-blue-900/40
             {% elif n.tipo == 'turno_cancelado' %}bg-red-100 dark:bg-red-900/40
             {% elif n.tipo == 'informe' %}bg-sky-100 dark:bg-sky-900/40
             {% else %}bg-slate-100 dark:bg-slate-800{% endif %}">
             {% if n.tipo == 'turno_confirmado' %}
-            <svg class="w-4 h-4 text-emerald-600 dark:text-emerald-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
             </svg>
             {% elif n.tipo == 'turno_cancelado' %}
