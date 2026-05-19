@@ -1,0 +1,170 @@
+{% extends "base_admin.html" %}
+{% set active_page = "bonos" %}
+{% block title %}Bonos — MediPortal{% endblock %}
+
+{% block content %}
+
+<div class="mb-6 flex items-center justify-between">
+    <div>
+        <h1 class="text-2xl font-semibold text-slate-800 dark:text-slate-100">Bonos de atención</h1>
+        <p class="text-slate-500 dark:text-slate-400 text-sm mt-0.5">Emisión y cola de espera por especialidad</p>
+    </div>
+    <span class="text-sm text-slate-400">{{ hoy }}</span>
+</div>
+
+{% if msg %}
+<div class="auto-dismiss mb-6 px-4 py-3 rounded-lg text-sm flex items-center gap-2 border
+    {% if msg_tipo == 'success' %}bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300
+    {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
+    {{ msg }}
+</div>
+{% endif %}
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Panel emisión -->
+    <div class="lg:col-span-1 space-y-5">
+
+        <!-- Seleccionar especialidad -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+            <h3 class="font-semibold text-slate-800 dark:text-slate-100 mb-4 text-sm">Ver cola por especialidad</h3>
+            <form method="get" action="/bonos/">
+                <select name="especialidad" onchange="this.form.submit()"
+                    class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <option value="">— Seleccionar especialidad —</option>
+                    {% for esp in especialidades %}
+                    <option value="{{ esp }}" {% if esp == especialidad_sel %}selected{% endif %}>{{ esp }}</option>
+                    {% endfor %}
+                </select>
+            </form>
+        </div>
+
+        <!-- Emitir bono -->
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
+            <h3 class="font-semibold text-slate-800 dark:text-slate-100 mb-4 text-sm flex items-center gap-2">
+                <svg class="w-4 h-4 text-accent-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"/>
+                </svg>
+                Emitir nuevo bono
+            </h3>
+
+            <!-- Buscar paciente -->
+            <form method="get" action="/bonos/" class="mb-4">
+                {% if especialidad_sel %}<input type="hidden" name="especialidad" value="{{ especialidad_sel }}">{% endif %}
+                <div class="relative">
+                    <input type="text" name="q" value="{{ q_pac }}" placeholder="Buscar paciente por DNI o nombre..."
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 pr-10">
+                    <button type="submit" class="absolute right-2 top-2.5 text-slate-400 hover:text-accent-600">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <circle cx="11" cy="11" r="8"/><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-4.35-4.35"/>
+                        </svg>
+                    </button>
+                </div>
+            </form>
+
+            {% if pacientes %}
+            <form method="post" action="/bonos/emitir" class="space-y-3" id="form-bono">
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Paciente</label>
+                    <select name="paciente_id" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                        {% for pac in pacientes %}
+                        <option value="{{ pac.id }}">{{ pac.apellido }}, {{ pac.nombre }} — DNI {{ pac.dni }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Especialidad</label>
+                    <select name="especialidad" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                        <option value="">— Seleccionar —</option>
+                        {% for esp in especialidades %}
+                        <option value="{{ esp }}" {% if esp == especialidad_sel %}selected{% endif %}>{{ esp }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Hora estimada</label>
+                    <input type="time" name="hora" required
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1">Observaciones <span class="text-slate-400 font-normal">(opcional)</span></label>
+                    <textarea name="observaciones" rows="2" placeholder="Ej: consulta de control, derivación, etc."
+                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none"></textarea>
+                </div>
+                <button type="submit"
+                    class="w-full py-2.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors">
+                    Emitir bono
+                </button>
+            </form>
+            {% elif q_pac %}
+            <p class="text-sm text-slate-400">No se encontraron pacientes para "{{ q_pac }}".</p>
+            {% else %}
+            <p class="text-xs text-slate-400">Buscá un paciente para emitir el bono.</p>
+            {% endif %}
+        </div>
+
+    </div>
+
+    <!-- Cola de atención -->
+    <div class="lg:col-span-2">
+        <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6">
+            <h3 class="font-semibold text-slate-800 dark:text-slate-100 mb-5 flex items-center gap-2">
+                <svg class="w-4 h-4 text-accent-600 dark:text-accent-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/>
+                </svg>
+                Cola de espera
+                {% if especialidad_sel %}— <span class="text-accent-600 dark:text-accent-400">{{ especialidad_sel }}</span>{% endif %}
+            </h3>
+
+            {% if not especialidad_sel %}
+            <p class="text-slate-400 text-sm">Seleccioná una especialidad para ver la cola.</p>
+            {% elif not cola %}
+            <p class="text-slate-400 text-sm">No hay bonos activos para hoy en {{ especialidad_sel }}.</p>
+            {% else %}
+            <div class="space-y-3">
+                {% for bono in cola %}
+                <div class="flex items-center gap-4 bg-slate-50 dark:bg-slate-800 rounded-xl px-4 py-4 border border-slate-100 dark:border-slate-700">
+                    <!-- Número de orden -->
+                    <div class="w-10 h-10 rounded-full bg-accent-100 dark:bg-accent-900/40 flex items-center justify-center flex-shrink-0">
+                        <span class="text-accent-700 dark:text-accent-400 font-bold text-sm">{{ loop.index }}</span>
+                    </div>
+
+                    <div class="flex-1 min-w-0">
+                        <p class="font-semibold text-slate-800 dark:text-slate-100 text-sm">
+                            {{ bono.paciente.apellido }}, {{ bono.paciente.nombre }}
+                        </p>
+                        <p class="text-xs text-slate-400 mt-0.5">
+                            DNI: {{ bono.paciente.dni }}
+                            · Hora: {{ bono.hora }}
+                            · Emitido por: {{ bono.emitido_por }}
+                        </p>
+                        {% if bono.observaciones %}
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 italic">{{ bono.observaciones }}</p>
+                        {% endif %}
+                    </div>
+
+                    <div class="flex gap-2 flex-shrink-0">
+                        <form method="post" action="/bonos/atender/{{ bono.id }}">
+                            <button class="px-3 py-1.5 rounded-lg bg-green-600 hover:bg-green-700 text-white text-xs font-medium" title="Marcar como atendido">
+                                Atendido
+                            </button>
+                        </form>
+                        <form method="post" action="/bonos/cancelar/{{ bono.id }}"
+                            onsubmit="return confirm('¿Cancelar este bono?')">
+                            <button class="px-3 py-1.5 rounded-lg bg-red-100 hover:bg-red-200 dark:bg-red-900/30 dark:hover:bg-red-900/50 text-red-700 dark:text-red-400 text-xs font-medium">
+                                Cancelar
+                            </button>
+                        </form>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+</div>
+
+{% endblock %}
