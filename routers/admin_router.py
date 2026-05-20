@@ -2,7 +2,7 @@ import os
 import uuid
 import datetime
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -555,18 +555,49 @@ async def turno_log(request: Request, turno_id: int, db: Session = Depends(get_d
 
 # ─── Resultados ───────────────────────────────────────────────────────────────
 
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+    ".tiff", ".tif", ".doc", ".docx", ".xls", ".xlsx", ".txt",
+    ".zip", ".rar", ".dcm",
+}
+
+
 @router.get("/resultados", response_class=HTMLResponse)
 async def resultados_page(request: Request, db: Session = Depends(get_db)):
     user = require_staff(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    resultados = db.query(Resultado).order_by(Resultado.created_at.desc()).all()
-    pacientes = db.query(Paciente).filter(Paciente.activo == True).order_by(Paciente.apellido).all()
+    mi_nombre = staff_nombre(user)
+    rol = user.get("rol", "")
+
+    # Profesionales ven solo sus pacientes; admin/recepcion ven todos
+    if rol == "profesional":
+        paciente_ids = [t[0] for t in db.query(Turno.paciente_id).filter(
+            Turno.profesional == mi_nombre
+        ).distinct().all()]
+        pacientes = db.query(Paciente).filter(
+            Paciente.id.in_(paciente_ids), Paciente.activo == True
+        ).order_by(Paciente.apellido).all()
+        resultados = db.query(Resultado).filter(
+            Resultado.paciente_id.in_(paciente_ids)
+        ).order_by(Resultado.created_at.desc()).all()
+    else:
+        pacientes = db.query(Paciente).filter(Paciente.activo == True).order_by(Paciente.apellido).all()
+        resultados = db.query(Resultado).order_by(Resultado.created_at.desc()).all()
+
+    # Turnos por paciente para selector de turno en el modal
+    turnos_por_paciente = {}
+    for p in pacientes:
+        turnos_por_paciente[p.id] = db.query(Turno).filter(
+            Turno.paciente_id == p.id,
+            Turno.estado.notin_(["cancelado"])
+        ).order_by(Turno.fecha.desc()).limit(20).all()
 
     return templates.TemplateResponse("admin/resultados.html", {
         "request": request, "user": user,
         "resultados": resultados, "pacientes": pacientes,
+        "turnos_por_paciente": turnos_por_paciente,
         "msg": request.query_params.get("msg", ""),
         "msg_tipo": request.query_params.get("tipo", ""),
         "is_admin": is_admin(user),
@@ -577,34 +608,48 @@ async def resultados_page(request: Request, db: Session = Depends(get_db)):
 async def subir_resultado(
     request: Request,
     paciente_id: int = Form(...),
+    turno_id: int = Form(None),
     titulo: str = Form(...),
     descripcion: str = Form(""),
     fecha_estudio: str = Form(""),
-    archivo: UploadFile = File(...),
+    archivo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
     user = require_staff(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    if not archivo.filename.lower().endswith(".pdf"):
-        return RedirectResponse(url="/admin/resultados?msg=Solo+se+permiten+archivos+PDF.&tipo=error", status_code=302)
+    file_path = None
+    file_name = None
 
-    os.makedirs(UPLOAD_DIR, exist_ok=True)
-    unique_name = f"{uuid.uuid4().hex}_{archivo.filename}"
-    file_path = os.path.join(UPLOAD_DIR, unique_name)
-
-    with open(file_path, "wb") as f:
-        content = await archivo.read()
-        f.write(content)
+    if archivo and archivo.filename:
+        import mimetypes
+        ext = os.path.splitext(archivo.filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            return RedirectResponse(url="/admin/resultados?msg=Tipo+de+archivo+no+permitido.&tipo=error", status_code=302)
+        os.makedirs(UPLOAD_DIR, exist_ok=True)
+        unique_name = f"{uuid.uuid4().hex}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, unique_name)
+        with open(file_path, "wb") as f:
+            f.write(await archivo.read())
+        file_name = archivo.filename
 
     resultado = Resultado(
         paciente_id=paciente_id, titulo=titulo.strip(),
-        descripcion=descripcion.strip(), archivo_nombre=archivo.filename,
+        descripcion=descripcion.strip(), archivo_nombre=file_name,
         archivo_path=file_path, fecha_estudio=fecha_estudio,
         subido_por=staff_nombre(user),
     )
     db.add(resultado)
+    db.flush()
+
+    # Notificación in-app al paciente
+    crear_notificacion(
+        db, paciente_id,
+        titulo="Nuevo resultado disponible",
+        mensaje=f"Se cargó un nuevo resultado: {titulo.strip()}.",
+        tipo="resultado"
+    )
     db.commit()
 
     paciente = db.query(Paciente).filter(Paciente.id == paciente_id).first()
@@ -612,6 +657,24 @@ async def subir_resultado(
         mail_resultado_disponible(paciente.email, paciente.nombre, titulo.strip(), fecha_estudio)
 
     return RedirectResponse(url="/admin/resultados?msg=Resultado+subido+correctamente.&tipo=success", status_code=302)
+
+
+@router.get("/resultados/ver/{resultado_id}")
+async def ver_resultado(request: Request, resultado_id: int, db: Session = Depends(get_db)):
+    import mimetypes
+    user = require_staff(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+    resultado = db.query(Resultado).filter(Resultado.id == resultado_id).first()
+    if not resultado or not resultado.archivo_path or not os.path.exists(resultado.archivo_path):
+        return RedirectResponse(url="/admin/resultados?msg=Archivo+no+encontrado.&tipo=error", status_code=302)
+    media_type, _ = mimetypes.guess_type(resultado.archivo_path)
+    media_type = media_type or "application/octet-stream"
+    from fastapi.responses import Response
+    with open(resultado.archivo_path, "rb") as f:
+        content = f.read()
+    headers = {"Content-Disposition": f"inline; filename=\"{resultado.archivo_nombre or 'archivo'}\""}
+    return Response(content=content, media_type=media_type, headers=headers)
 
 
 @router.post("/resultados/eliminar/{resultado_id}")

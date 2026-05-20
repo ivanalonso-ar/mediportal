@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from database import get_db
 from models import Paciente, Turno, Resultado, UsuarioStaff
 from auth import get_current_user
+from notif_utils import crear_notificacion
 
 router = APIRouter(prefix="/profesional")
 templates = Jinja2Templates(directory="templates")
@@ -185,6 +186,14 @@ async def subir_informe(
         subido_por=mi_nombre,
     )
     db.add(resultado)
+    db.flush()
+
+    crear_notificacion(
+        db, paciente_id,
+        titulo="Nuevo resultado disponible",
+        mensaje=f"Se cargó un nuevo resultado: {titulo.strip()}.",
+        tipo="resultado"
+    )
     db.commit()
 
     return RedirectResponse(url="/profesional/informes?msg=Informe+cargado+correctamente.&tipo_msg=success", status_code=302)

@@ -55,24 +55,26 @@
 
             <div class="flex items-center gap-2 flex-shrink-0">
                 {% if r.archivo_path %}
-                <a href="/paciente/resultados/descargar/{{ r.id }}" target="_blank"
+                <button onclick="verArchivo('/admin/resultados/ver/{{ r.id }}', '{{ r.archivo_nombre or '' }}')"
                     class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 text-xs font-medium transition-colors">
                     <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
                         <path stroke-linecap="round" stroke-linejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
                     </svg>
-                    Ver PDF
-                </a>
+                    Ver archivo
+                </button>
                 {% endif %}
+                {% if is_admin %}
                 <form method="post" action="/admin/resultados/eliminar/{{ r.id }}" class="inline">
                     <button type="submit"
-                        onclick="return confirm('¿Eliminar este resultado? Esta acción no se puede deshacer.')"
+                        onclick="return confirm('¿Eliminar este resultado?')"
                         class="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                         </svg>
                     </button>
                 </form>
+                {% endif %}
             </div>
         </div>
         {% endfor %}
@@ -82,11 +84,34 @@
     {% endif %}
 </div>
 
+<!-- Modal visor de archivo -->
+<div id="modal-visor" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/60 backdrop-blur-sm" onclick="cerrarVisor()"></div>
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-4xl flex flex-col" style="height:85vh">
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+            <p id="visor-titulo" class="text-sm font-medium text-slate-700 dark:text-slate-300 truncate"></p>
+            <div class="flex items-center gap-2">
+                <a id="visor-descargar" href="#" target="_blank"
+                    class="px-3 py-1.5 rounded-lg bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-600 dark:text-slate-300 text-xs font-medium">
+                    Descargar
+                </a>
+                <button onclick="cerrarVisor()" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div id="visor-body" class="flex-1 overflow-hidden rounded-b-2xl">
+            <!-- iframe o img se inyectan por JS -->
+        </div>
+    </div>
+</div>
 
 <!-- Modal: Subir resultado -->
 <div id="modal-subir" class="hidden fixed inset-0 z-50 flex items-center justify-center px-4">
     <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" onclick="toggleModal('modal-subir')"></div>
-    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6">
+    <div class="relative bg-white dark:bg-slate-900 rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full max-w-lg p-6 max-h-[90vh] overflow-y-auto">
         <div class="flex items-center justify-between mb-5">
             <h2 class="font-semibold text-slate-800 dark:text-slate-100">Subir resultado</h2>
             <button onclick="toggleModal('modal-subir')" class="p-1 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800">
@@ -99,7 +124,7 @@
         <form method="post" action="/admin/resultados/subir" enctype="multipart/form-data" class="space-y-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Paciente *</label>
-                <select name="paciente_id" required
+                <select name="paciente_id" id="sel-paciente" required onchange="cargarTurnos(this.value)"
                     class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
                     <option value="">Seleccioná un paciente</option>
                     {% for p in pacientes %}
@@ -107,19 +132,25 @@
                     {% endfor %}
                 </select>
             </div>
+
+            <!-- Selector de turno -->
+            <div id="turno-container">
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Turno asociado <span class="text-slate-400 font-normal">(opcional)</span></label>
+                <select name="turno_id" id="sel-turno"
+                    class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <option value="">— Sobreturno / Sin turno —</option>
+                </select>
+            </div>
+
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Título del estudio *</label>
                 <input type="text" name="titulo" required placeholder="Ej: Hemograma completo"
                     class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
             </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha del estudio</label>
-                    <input type="date" name="fecha_estudio"
-                        class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
-                </div>
-                <div class="flex flex-col justify-end">
-                </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Fecha del estudio</label>
+                <input type="date" name="fecha_estudio"
+                    class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Descripción / Observaciones</label>
@@ -127,17 +158,17 @@
                     class="w-full px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none"></textarea>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Archivo PDF *</label>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Archivo</label>
                 <div id="drop-zone"
                     class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-accent-400 transition-colors"
                     onclick="document.getElementById('archivo-input').click()">
                     <svg class="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
                     </svg>
-                    <p id="file-label" class="text-sm text-slate-500 dark:text-slate-400">Hacé clic para seleccionar un PDF</p>
-                    <p class="text-xs text-slate-400 mt-1">Solo archivos .pdf</p>
+                    <p id="file-label" class="text-sm text-slate-500 dark:text-slate-400">Hacé clic para seleccionar un archivo</p>
+                    <p class="text-xs text-slate-400 mt-1">PDF, imágenes, Word, Excel, DICOM, etc.</p>
                 </div>
-                <input type="file" name="archivo" id="archivo-input" accept=".pdf" required class="hidden">
+                <input type="file" name="archivo" id="archivo-input" class="hidden">
             </div>
 
             <div class="flex gap-3 pt-1">
@@ -158,14 +189,68 @@
 
 {% block extra_scripts %}
 <script>
+// Datos de turnos por paciente
+const turnosPorPaciente = {
+    {% for p in pacientes %}
+    "{{ p.id }}": [
+        {% for t in turnos_por_paciente.get(p.id, []) %}
+        { id: {{ t.id }}, label: "{{ t.fecha }} {{ t.hora }} — {{ t.especialidad }}" },
+        {% endfor %}
+    ],
+    {% endfor %}
+};
+
+function cargarTurnos(pacienteId) {
+    const sel = document.getElementById('sel-turno');
+    sel.innerHTML = '<option value="">— Sobreturno / Sin turno —</option>';
+    const turnos = turnosPorPaciente[pacienteId] || [];
+    turnos.forEach(t => {
+        const opt = document.createElement('option');
+        opt.value = t.id;
+        opt.textContent = t.label;
+        sel.appendChild(opt);
+    });
+}
+
 function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+
+function verArchivo(url, nombre) {
+    const body = document.getElementById('visor-body');
+    document.getElementById('visor-titulo').textContent = nombre || 'Archivo';
+    document.getElementById('visor-descargar').href = url;
+
+    const ext = (nombre || '').split('.').pop().toLowerCase();
+    const imageExts = ['jpg','jpeg','png','gif','bmp','webp','tiff','tif'];
+
+    body.innerHTML = '';
+    if (ext === 'pdf') {
+        body.innerHTML = `<iframe src="${url}" class="w-full h-full rounded-b-2xl" frameborder="0"></iframe>`;
+    } else if (imageExts.includes(ext)) {
+        body.innerHTML = `<div class="w-full h-full flex items-center justify-center bg-slate-50 dark:bg-slate-950 rounded-b-2xl overflow-auto p-4">
+            <img src="${url}" class="max-w-full max-h-full object-contain rounded-lg shadow">
+        </div>`;
+    } else {
+        body.innerHTML = `<div class="w-full h-full flex flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-950 rounded-b-2xl">
+            <svg class="w-16 h-16 text-slate-300" fill="none" stroke="currentColor" stroke-width="1" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
+            </svg>
+            <p class="text-slate-500 text-sm">Este tipo de archivo no tiene vista previa.</p>
+            <a href="${url}" target="_blank" class="px-4 py-2 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium">Descargar archivo</a>
+        </div>`;
+    }
+
+    document.getElementById('modal-visor').classList.remove('hidden');
+}
+
+function cerrarVisor() {
+    document.getElementById('modal-visor').classList.add('hidden');
+    document.getElementById('visor-body').innerHTML = '';
+}
 
 document.getElementById('archivo-input').addEventListener('change', function() {
     const label = document.getElementById('file-label');
-    label.textContent = this.files[0] ? this.files[0].name : 'Hacé clic para seleccionar un PDF';
-    if (this.files[0]) {
-        document.getElementById('drop-zone').classList.add('border-accent-500');
-    }
+    label.textContent = this.files[0] ? this.files[0].name : 'Hacé clic para seleccionar un archivo';
+    if (this.files[0]) document.getElementById('drop-zone').classList.add('border-accent-500');
 });
 </script>
 {% endblock %}

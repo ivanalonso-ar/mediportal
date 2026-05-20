@@ -102,6 +102,9 @@
                         type="text"
                         name="telefono"
                         value="{{ form.telefono if form else '' }}"
+                        pattern="\d*"
+                        title="Solo números, sin guiones ni espacios"
+                        placeholder="Ej: 1145678900"
                         class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
                     >
                 </div>
@@ -220,5 +223,7 @@ function validarPasswords() {
 pw1.addEventListener("input", validarPasswords);
 pw2.addEventListener("input", validarPasswords);
 </script>
+
+<p class="mt-4 text-center text-xs text-slate-400">MediPortal &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
 
 {% endblock %}
