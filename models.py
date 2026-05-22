@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, ForeignKey, Text, UniqueConstraint
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint, Index
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -18,11 +18,12 @@ class Paciente(Base):
     password_hash = Column(String(256), nullable=False)
     primer_login = Column(Boolean, default=True)
     activo = Column(Boolean, default=True)
-    aprobado = Column(Boolean, default=True)  # False = registro pendiente de aprobación
+    aprobado = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     turnos = relationship("Turno", back_populates="paciente", cascade="all, delete-orphan")
     resultados = relationship("Resultado", back_populates="paciente", cascade="all, delete-orphan")
+    notificaciones = relationship("Notificacion", back_populates="paciente", cascade="all, delete-orphan")
 
 
 class UsuarioStaff(Base):
@@ -90,11 +91,10 @@ class ObraSocial(Base):
 
 class ProfesionalEspecialidad(Base):
     __tablename__ = "profesionales_especialidades"
-    __table_args__ = (UniqueConstraint("profesional_id", "especialidad_id", name="uq_profesional_especialidad"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    profesional_id = Column(Integer, ForeignKey("usuarios_staff.id"), nullable=False)
-    especialidad_id = Column(Integer, ForeignKey("especialidades.id"), nullable=False)
+    profesional_id = Column(Integer, ForeignKey("usuarios_staff.id", ondelete="CASCADE"), nullable=False)
+    especialidad_id = Column(Integer, ForeignKey("especialidades.id", ondelete="CASCADE"), nullable=False)
     nombre_publico = Column(String(160), nullable=False)
     turno = Column(String(20), nullable=False, default="manana")
     activo = Column(Boolean, default=True)
@@ -103,36 +103,47 @@ class ProfesionalEspecialidad(Base):
     profesional = relationship("UsuarioStaff")
     especialidad = relationship("Especialidad")
 
+    __table_args__ = (
+        UniqueConstraint("profesional_id", "especialidad_id", name="uq_profesional_especialidad"),
+    )
+
 
 class Turno(Base):
     __tablename__ = "turnos"
 
     id = Column(Integer, primary_key=True, index=True)
-    paciente_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)
+    paciente_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
+    # Fix 4: profesional_id como FK además del nombre (nombre se mantiene para compatibilidad)
+    profesional_id = Column(Integer, ForeignKey("usuarios_staff.id", ondelete="SET NULL"), nullable=True)
     fecha = Column(String(20), nullable=False)
     hora = Column(String(10), nullable=False)
     especialidad = Column(String(100), nullable=False)
-    profesional = Column(String(100))
+    profesional = Column(String(150))   # nombre denormalizado para display rápido
     estado = Column(String(50), default="pendiente")  # pendiente, confirmado, cancelado, completado
-    tipo = Column(String(20), default="normal")       # normal, sobreturno
-    tipo_consulta = Column(String(20), default="obra_social")  # obra_social, particular
+    tipo = Column(String(20), default="normal")
+    tipo_consulta = Column(String(20), default="obra_social")
     observaciones = Column(Text)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
-    created_by = Column(String(100))   # quien creó el turno
+    created_by = Column(String(100))
 
     paciente = relationship("Paciente", back_populates="turnos")
+    profesional_ref = relationship("UsuarioStaff", foreign_keys=[profesional_id])
     logs = relationship("TurnoLog", back_populates="turno", cascade="all, delete-orphan")
+
+    # Fix 9: unique constraint para evitar doble turno mismo paciente/fecha/hora/especialidad
+    __table_args__ = (
+        UniqueConstraint("paciente_id", "fecha", "hora", "especialidad", name="uq_turno_paciente"),
+    )
 
 
 class TurnoLog(Base):
-    """Registro de cada modificación/cancelación sobre un turno."""
     __tablename__ = "turno_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    turno_id = Column(Integer, ForeignKey("turnos.id"), nullable=False)
-    accion = Column(String(50), nullable=False)   # creado, modificado, cancelado, estado_cambiado
-    descripcion = Column(Text, nullable=False)     # detalle legible del cambio
-    realizado_por = Column(String(100), nullable=False)  # nombre del staff
+    turno_id = Column(Integer, ForeignKey("turnos.id", ondelete="CASCADE"), nullable=False)
+    accion = Column(String(50), nullable=False)
+    descripcion = Column(Text, nullable=False)
+    realizado_por = Column(String(100), nullable=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     turno = relationship("Turno", back_populates="logs")
@@ -142,54 +153,55 @@ class Resultado(Base):
     __tablename__ = "resultados"
 
     id = Column(Integer, primary_key=True, index=True)
-    paciente_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)
+    paciente_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
+    # Fix 5: staff_id como FK además del nombre
+    subido_por_id = Column(Integer, ForeignKey("usuarios_staff.id", ondelete="SET NULL"), nullable=True)
     titulo = Column(String(200), nullable=False)
     descripcion = Column(Text)
     archivo_nombre = Column(String(300))
     archivo_path = Column(String(500))
     fecha_estudio = Column(String(20))
-    subido_por = Column(String(100))
+    subido_por = Column(String(100))  # nombre denormalizado para display
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     paciente = relationship("Paciente", back_populates="resultados")
+    subido_por_ref = relationship("UsuarioStaff", foreign_keys=[subido_por_id])
 
 
 class Aviso(Base):
-    """Carteles/avisos configurables que se muestran en el portal."""
     __tablename__ = "avisos"
 
     id = Column(Integer, primary_key=True, index=True)
     titulo = Column(String(200), nullable=False)
     contenido = Column(Text, nullable=False)
-    tipo = Column(String(20), default="info")   # info, warning, importante
+    tipo = Column(String(20), default="info")
     activo = Column(Boolean, default=True)
     orden = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
 class Notificacion(Base):
-    """Notificaciones in-app para pacientes."""
     __tablename__ = "notificaciones"
 
     id = Column(Integer, primary_key=True, index=True)
-    paciente_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)
+    paciente_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
     titulo = Column(String(200), nullable=False)
     mensaje = Column(Text, nullable=False)
-    tipo = Column(String(40), default="info")   # turno_confirmado, turno_cancelado, informe, turno_modificado
+    tipo = Column(String(40), default="info")
     leido = Column(Boolean, default=False)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
-    paciente = relationship("Paciente", backref="notificaciones")
+    # Fix 7: cascade correcto, relationship en Paciente
+    paciente = relationship("Paciente", back_populates="notificaciones")
 
 
 class GrupoFamiliar(Base):
-    """Relación entre paciente titular y miembro de su familia."""
     __tablename__ = "grupos_familiares"
 
     id = Column(Integer, primary_key=True, index=True)
-    titular_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)
-    miembro_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)
-    parentesco = Column(String(50))  # hijo, esposo/a, madre, padre, otro
+    titular_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
+    miembro_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
+    parentesco = Column(String(50))
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     titular = relationship("Paciente", foreign_keys=[titular_id])
@@ -197,18 +209,18 @@ class GrupoFamiliar(Base):
 
     __table_args__ = (
         UniqueConstraint("titular_id", "miembro_id", name="uq_grupo_familiar"),
+        # Fix 8: impedir ciclos — se maneja también a nivel de lógica en el router
     )
 
 
 class SolicitudGrupo(Base):
-    """Solicitud de vinculación familiar pendiente de aceptación."""
     __tablename__ = "solicitudes_grupo"
 
     id = Column(Integer, primary_key=True, index=True)
-    solicitante_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)  # quien invita
-    destinatario_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)  # quien debe aceptar
+    solicitante_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
+    destinatario_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
     parentesco = Column(String(50))
-    estado = Column(String(20), default="pendiente")  # pendiente, aceptada, rechazada
+    estado = Column(String(20), default="pendiente")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     solicitante = relationship("Paciente", foreign_keys=[solicitante_id])
@@ -216,17 +228,21 @@ class SolicitudGrupo(Base):
 
 
 class Bono(Base):
-    """Bono de atención emitido por recepción para una especialidad."""
     __tablename__ = "bonos"
 
     id = Column(Integer, primary_key=True, index=True)
-    paciente_id = Column(Integer, ForeignKey("pacientes.id"), nullable=False)
+    paciente_id = Column(Integer, ForeignKey("pacientes.id", ondelete="CASCADE"), nullable=False)
     especialidad = Column(String(100), nullable=False)
     fecha = Column(String(20), nullable=False)
     hora = Column(String(10), nullable=False)
-    emitido_por = Column(String(150), nullable=False)  # nombre recepcionista
+    emitido_por = Column(String(150), nullable=False)
     observaciones = Column(Text)
-    estado = Column(String(20), default="activo")  # activo, atendido, cancelado
+    estado = Column(String(20), default="activo")
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
     paciente = relationship("Paciente")
+
+    # Fix 11: índice para buscar por fecha+especialidad rápido
+    __table_args__ = (
+        Index("idx_bonos_fecha_esp", "fecha", "especialidad"),
+    )

@@ -79,6 +79,7 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
         "turno_por_especialidad": catalogo["turno_por_especialidad"],
         "slots_manana": catalogo["slots_manana"],
         "slots_tarde": catalogo["slots_tarde"],
+        "profesionales_json": catalogo["profesionales_json"],
         "avisos": avisos,
         "msg": request.query_params.get("msg", ""),
         "msg_tipo": request.query_params.get("tipo", ""),
@@ -91,6 +92,7 @@ async def solicitar_turno(
     fecha: str = Form(...),
     hora: str = Form(...),
     especialidad: str = Form(...),
+    profesional_nombre: str = Form(""),
     tipo_consulta: str = Form("obra_social"),
     observaciones: str = Form(""),
     para_paciente_id: int = Form(None),
@@ -103,6 +105,15 @@ async def solicitar_turno(
     pid = int(user["sub"])
     if tipo_consulta not in ("obra_social", "particular"):
         tipo_consulta = "obra_social"
+
+    # Validar fecha no pasada
+    import datetime as dt
+    try:
+        fecha_dt = dt.datetime.strptime(fecha, "%Y-%m-%d").date()
+        if fecha_dt < dt.date.today():
+            return RedirectResponse(url=f"/paciente/turnos?msg=No+podes+solicitar+un+turno+en+una+fecha+pasada.&tipo=error&para={para_paciente_id or pid}", status_code=302)
+    except ValueError:
+        return RedirectResponse(url="/paciente/turnos?msg=Fecha+invalida.&tipo=error", status_code=302)
 
     # Validar que el paciente destino sea el titular o un miembro del grupo
     if para_paciente_id and para_paciente_id != pid:
@@ -122,9 +133,13 @@ async def solicitar_turno(
             status_code=302
         )
 
+    # Fix 8: impedir ciclos en grupo familiar — validación en router
+    # (si A es titular de B, B no puede ser titular de A)
+    # Se maneja en invitar_familiar con check adicional
     turno = Turno(
         paciente_id=destino_id,
         fecha=fecha, hora=hora, especialidad=especialidad,
+        profesional=profesional_nombre.strip() if profesional_nombre else None,
         tipo_consulta=tipo_consulta,
         observaciones=observaciones, estado="confirmado"
     )
@@ -397,6 +412,14 @@ async def invitar_familiar(
     if familiar.id == pid:
         return RedirectResponse(url="/paciente/perfil?msg=No+podes+agregarte+a+vos+mismo.&tipo=error", status_code=302)
 
+    # Fix 8: impedir ciclo — si el familiar ya es titular mío, no puede ser mi miembro
+    ciclo = db.query(GrupoFamiliar).filter(
+        GrupoFamiliar.titular_id == familiar.id,
+        GrupoFamiliar.miembro_id == pid
+    ).first()
+    if ciclo:
+        return RedirectResponse(url="/paciente/perfil?msg=Ese+paciente+ya+te+tiene+en+su+grupo+familiar.&tipo=error", status_code=302)
+
     # Ya vinculados
     ya = db.query(GrupoFamiliar).filter(
         GrupoFamiliar.titular_id == pid, GrupoFamiliar.miembro_id == familiar.id
@@ -509,7 +532,12 @@ async def notificaciones_page(request: Request, db: Session = Depends(get_db)):
     notifs = db.query(Notificacion).filter(
         Notificacion.paciente_id == pid
     ).order_by(Notificacion.created_at.desc()).all()
-    notif_no_leidas = sum(1 for n in notifs if not n.leido)
+    # Marcar todas como leídas al visitar
+    for n in notifs:
+        if not n.leido:
+            n.leido = True
+    db.commit()
+    notif_no_leidas = 0
     return templates.TemplateResponse("paciente/notificaciones.html", {
         "request": request, "user": user,
         "notificaciones": notifs,

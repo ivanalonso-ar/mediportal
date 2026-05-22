@@ -1,6 +1,4 @@
 import os
-import uuid
-import mimetypes
 import datetime
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
@@ -11,6 +9,8 @@ from database import get_db
 from models import Paciente, Turno, Resultado, UsuarioStaff
 from auth import get_current_user
 from notif_utils import crear_notificacion
+from storage import subir_archivo
+from constants import ALLOWED_EXTENSIONS
 
 router = APIRouter(prefix="/profesional")
 templates = Jinja2Templates(directory="templates")
@@ -171,13 +171,8 @@ async def subir_informe(
                 url="/profesional/informes?msg=Tipo+de+archivo+no+permitido.&tipo_msg=error",
                 status_code=302
             )
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(UPLOAD_DIR, unique_name)
-        with open(file_path, "wb") as f:
-            content = await archivo.read()
-            f.write(content)
-        file_name = archivo.filename
+        contenido = await archivo.read()
+        file_path, file_name = subir_archivo(contenido, archivo.filename, ext)
 
     resultado = Resultado(
         paciente_id=paciente_id, titulo=titulo.strip(),

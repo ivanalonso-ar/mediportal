@@ -209,3 +209,22 @@ create table if not exists bonos (
 create index if not exists idx_bonos_fecha_esp on bonos(fecha, especialidad);
 create index if not exists idx_grupos_titular on grupos_familiares(titular_id);
 create index if not exists idx_solicitudes_destinatario on solicitudes_grupo(destinatario_id);
+
+-- ─── Migraciones v7.1 ────────────────────────────────────────────────────────
+
+-- Fix 4: FK profesional en turnos
+alter table turnos add column if not exists profesional_id integer references usuarios_staff(id) on delete set null;
+
+-- Fix 5: FK subido_por en resultados
+alter table resultados add column if not exists subido_por_id integer references usuarios_staff(id) on delete set null;
+
+-- Fix 9: unique constraint turnos (evita doble turno mismo paciente)
+alter table turnos drop constraint if exists uq_turno_paciente;
+alter table turnos add constraint uq_turno_paciente unique (paciente_id, fecha, hora, especialidad);
+
+-- Fix 7: cascades en notificaciones (ya correcto si se creó con el schema inicial)
+-- Fix 11: índice bonos
+create index if not exists idx_bonos_fecha_esp on bonos(fecha, especialidad);
+
+-- Fix 13: UPLOAD_DIR centralizado — sin cambio de schema, es a nivel código
+

@@ -3,6 +3,8 @@ from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 
 RE_SOLO_LETRAS = re.compile(r"^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s\-']+$")
 RE_SOLO_NUMEROS = re.compile(r"^\d+$")
@@ -11,6 +13,8 @@ from database import get_db
 from models import ConfiguracionClinica, Paciente, UsuarioStaff
 from auth import verify_password, get_password_hash, create_access_token, get_current_user
 from mail import mail_cambio_password, mail_registro_pendiente_staff, mail_registro_aprobado, mail_registro_rechazado
+
+limiter = Limiter(key_func=get_remote_address)
 
 router = APIRouter()
 templates = Jinja2Templates(directory="templates")
@@ -32,6 +36,7 @@ async def login_page(request: Request):
 
 
 @router.post("/login")
+@limiter.limit("10/minute")
 async def login_post(
     request: Request,
     tipo: str = Form(...),
