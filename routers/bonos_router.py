@@ -180,6 +180,9 @@ async def imprimir_bono(request: Request, bono_id: int, db: Session = Depends(ge
     # Encabezado
     story.append(Paragraph("MediPortal", titulo_style))
     story.append(Paragraph("Bono de Atención", subtitulo_style))
+    story.append(Paragraph(f"N° {bono.id:04d}", ParagraphStyle("num", parent=styles["Normal"],
+        fontSize=10, fontName="Helvetica", alignment=TA_CENTER,
+        textColor=colors.HexColor("#888888"), spaceAfter=8)))
     story.append(HRFlowable(width="100%", thickness=1.5, color=colors.HexColor("#1a56db"), spaceAfter=16))
 
     # Especialidad destacada

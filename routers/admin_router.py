@@ -1,8 +1,7 @@
 import os
-import uuid
 import datetime
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
-from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, FileResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 
@@ -14,11 +13,11 @@ from horarios import catalogo_horarios
 from disponibilidad import hora_disponible
 from auth import get_current_user, get_password_hash
 from mail import mail_bienvenida, mail_turno_confirmado, mail_turno_cancelado, mail_resultado_disponible, mail_registro_aprobado, mail_registro_rechazado
+from storage import subir_archivo, leer_archivo, eliminar_archivo
+from constants import ALLOWED_EXTENSIONS
 
 router = APIRouter(prefix="/admin")
 templates = Jinja2Templates(directory="templates")
-
-UPLOAD_DIR = "uploads/resultados"
 
 ESTADOS_TURNO = ["pendiente", "confirmado", "cancelado", "completado"]
 
@@ -137,6 +136,17 @@ async def nuevo_paciente(
     user = require_staff(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
+
+    import re
+    RE_LETRAS = re.compile(r"^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s\-']+$")
+    RE_NUMS = re.compile(r"^\d+$")
+
+    if not RE_LETRAS.match(nombre.strip()):
+        return RedirectResponse(url="/admin/pacientes?msg=El+nombre+no+puede+contener+números.&tipo=error", status_code=302)
+    if not RE_LETRAS.match(apellido.strip()):
+        return RedirectResponse(url="/admin/pacientes?msg=El+apellido+no+puede+contener+números.&tipo=error", status_code=302)
+    if not RE_NUMS.match(dni.strip()):
+        return RedirectResponse(url="/admin/pacientes?msg=El+DNI+solo+puede+contener+números.&tipo=error", status_code=302)
 
     existente = db.query(Paciente).filter(Paciente.dni == dni.strip()).first()
     if existente:
@@ -623,16 +633,11 @@ async def subir_resultado(
     file_name = None
 
     if archivo and archivo.filename:
-        import mimetypes
         ext = os.path.splitext(archivo.filename)[1].lower()
         if ext not in ALLOWED_EXTENSIONS:
             return RedirectResponse(url="/admin/resultados?msg=Tipo+de+archivo+no+permitido.&tipo=error", status_code=302)
-        os.makedirs(UPLOAD_DIR, exist_ok=True)
-        unique_name = f"{uuid.uuid4().hex}{ext}"
-        file_path = os.path.join(UPLOAD_DIR, unique_name)
-        with open(file_path, "wb") as f:
-            f.write(await archivo.read())
-        file_name = archivo.filename
+        contenido = await archivo.read()
+        file_path, file_name = subir_archivo(contenido, archivo.filename, ext)
 
     resultado = Resultado(
         paciente_id=paciente_id, titulo=titulo.strip(),
@@ -643,7 +648,6 @@ async def subir_resultado(
     db.add(resultado)
     db.flush()
 
-    # Notificación in-app al paciente
     crear_notificacion(
         db, paciente_id,
         titulo="Nuevo resultado disponible",
@@ -661,20 +665,18 @@ async def subir_resultado(
 
 @router.get("/resultados/ver/{resultado_id}")
 async def ver_resultado(request: Request, resultado_id: int, db: Session = Depends(get_db)):
-    import mimetypes
     user = require_staff(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
     resultado = db.query(Resultado).filter(Resultado.id == resultado_id).first()
-    if not resultado or not resultado.archivo_path or not os.path.exists(resultado.archivo_path):
+    if not resultado or not resultado.archivo_path:
         return RedirectResponse(url="/admin/resultados?msg=Archivo+no+encontrado.&tipo=error", status_code=302)
-    media_type, _ = mimetypes.guess_type(resultado.archivo_path)
-    media_type = media_type or "application/octet-stream"
-    from fastapi.responses import Response
-    with open(resultado.archivo_path, "rb") as f:
-        content = f.read()
+    try:
+        contenido, media_type = leer_archivo(resultado.archivo_path)
+    except Exception:
+        return RedirectResponse(url="/admin/resultados?msg=Archivo+no+disponible.&tipo=error", status_code=302)
     headers = {"Content-Disposition": f"inline; filename=\"{resultado.archivo_nombre or 'archivo'}\""}
-    return Response(content=content, media_type=media_type, headers=headers)
+    return Response(content=contenido, media_type=media_type, headers=headers)
 
 
 @router.post("/resultados/eliminar/{resultado_id}")
@@ -685,8 +687,8 @@ async def eliminar_resultado(request: Request, resultado_id: int, db: Session = 
 
     resultado = db.query(Resultado).filter(Resultado.id == resultado_id).first()
     if resultado:
-        if resultado.archivo_path and os.path.exists(resultado.archivo_path):
-            os.remove(resultado.archivo_path)
+        if resultado.archivo_path:
+            eliminar_archivo(resultado.archivo_path)
         db.delete(resultado)
         db.commit()
 
