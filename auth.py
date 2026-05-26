@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 from typing import Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
-from fastapi import Request
+from fastapi import Request, Response
 from config import settings
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -21,6 +21,29 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     expire = datetime.utcnow() + (expires_delta or timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
     return jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
+
+
+def usar_cookie_segura() -> bool:
+    return settings.APP_URL.startswith("https://")
+
+
+def set_auth_cookie(response: Response, token: str) -> None:
+    response.set_cookie(
+        key="access_token",
+        value=token,
+        httponly=True,
+        secure=usar_cookie_segura(),
+        max_age=settings.ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        samesite="lax",
+    )
+
+
+def delete_auth_cookie(response: Response) -> None:
+    response.delete_cookie(
+        key="access_token",
+        secure=usar_cookie_segura(),
+        samesite="lax",
+    )
 
 
 def decode_token(token: str) -> Optional[dict]:

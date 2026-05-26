@@ -11,7 +11,7 @@ RE_SOLO_NUMEROS = re.compile(r"^\d+$")
 
 from database import get_db
 from models import ConfiguracionClinica, Paciente, UsuarioStaff
-from auth import verify_password, get_password_hash, create_access_token, get_current_user
+from auth import verify_password, get_password_hash, create_access_token, get_current_user, set_auth_cookie, delete_auth_cookie
 from mail import mail_cambio_password, mail_registro_pendiente_staff, mail_registro_aprobado, mail_registro_rechazado
 
 limiter = Limiter(key_func=get_remote_address)
@@ -70,7 +70,7 @@ async def login_post(
             response = RedirectResponse(url="/cambiar-password", status_code=302)
         else:
             response = RedirectResponse(url="/paciente/turnos", status_code=302)
-        response.set_cookie(key="access_token", value=token, httponly=True, max_age=28800, samesite="lax")
+        set_auth_cookie(response, token)
         return response
 
     else:
@@ -94,14 +94,14 @@ async def login_post(
             response = RedirectResponse(url="/profesional/agenda", status_code=302)
         else:
             response = RedirectResponse(url="/admin/", status_code=302)
-        response.set_cookie(key="access_token", value=token, httponly=True, max_age=28800, samesite="lax")
+        set_auth_cookie(response, token)
         return response
 
 
 @router.get("/logout")
 async def logout():
     response = RedirectResponse(url="/login", status_code=302)
-    response.delete_cookie("access_token")
+    delete_auth_cookie(response)
     return response
 
 
@@ -159,7 +159,7 @@ async def cambiar_password_post(
         "primer_login": False
     })
     response = RedirectResponse(url="/paciente/turnos", status_code=302)
-    response.set_cookie(key="access_token", value=token, httponly=True, max_age=28800, samesite="lax")
+    set_auth_cookie(response, token)
     return response
 
 
@@ -246,5 +246,5 @@ async def registro_post(
         "primer_login": False
     })
     response = RedirectResponse(url="/paciente/turnos?msg=Bienvenido/a+al+portal.&tipo=success", status_code=302)
-    response.set_cookie(key="access_token", value=token, httponly=True, max_age=28800, samesite="lax")
+    set_auth_cookie(response, token)
     return response

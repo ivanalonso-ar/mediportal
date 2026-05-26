@@ -12,8 +12,9 @@ from obras_sociales import listar_obras_sociales
 from horarios import catalogo_horarios
 from disponibilidad import hora_disponible, horas_sin_disponibilidad
 from notif_utils import crear_notificacion
-from auth import get_current_user, verify_password, get_password_hash, create_access_token
+from auth import get_current_user, verify_password, get_password_hash, create_access_token, set_auth_cookie
 from mail import mail_cambio_password, mail_turno_cancelado
+from storage import generar_url_firmada
 
 router = APIRouter(prefix="/paciente")
 templates = Jinja2Templates(directory="templates")
@@ -250,7 +251,14 @@ async def descargar_resultado(
 
     if not resultado or not resultado.archivo_path:
         return RedirectResponse(url="/paciente/resultados?msg=Archivo+no+encontrado.&tipo=error", status_code=302)
+
     if not os.path.exists(resultado.archivo_path):
+        try:
+            url_firmada = generar_url_firmada(resultado.archivo_path)
+        except Exception:
+            return RedirectResponse(url="/paciente/resultados?msg=Archivo+no+disponible.&tipo=error", status_code=302)
+        if url_firmada and url_firmada.startswith("http"):
+            return RedirectResponse(url=url_firmada, status_code=302)
         return RedirectResponse(url="/paciente/resultados?msg=Archivo+no+disponible+en+el+servidor.&tipo=error", status_code=302)
 
     media_type, _ = mimetypes.guess_type(resultado.archivo_path)
@@ -335,7 +343,7 @@ async def perfil_editar(
         "primer_login": False
     })
     response = RedirectResponse(url="/paciente/perfil?msg=Datos+actualizados+correctamente.&tipo=success", status_code=302)
-    response.set_cookie(key="access_token", value=token, httponly=True, max_age=28800, samesite="lax")
+    set_auth_cookie(response, token)
     return response
 
 
