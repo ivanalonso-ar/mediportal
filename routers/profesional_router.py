@@ -1,9 +1,9 @@
-from templates_config import templates
 import os
 import datetime
 import logging
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -15,6 +15,7 @@ from storage import subir_archivo
 from constants import ALLOWED_EXTENSIONS
 
 router = APIRouter(prefix="/profesional")
+templates = Jinja2Templates(directory="templates")
 logger = logging.getLogger("mediportal.profesional")
 
 UPLOAD_DIR = "uploads/resultados"
@@ -37,6 +38,18 @@ def nombre_completo(user: dict) -> str:
     return f"{user.get('nombre', '')} {user.get('apellido', '')}".strip()
 
 
+def nombre_publico(user: dict, db) -> str:
+    from horarios import catalogo_horarios
+    nombre = user.get("nombre", "")
+    apellido = user.get("apellido", "")
+    catalogo = catalogo_horarios(db)
+    for profs in catalogo["profesionales"].values():
+        for p in profs:
+            if p.get("nombre_staff") == nombre and p.get("apellido_staff") == apellido:
+                return p["nombre"]
+    return f"{nombre} {apellido}".strip()
+
+
 @router.get("/agenda", response_class=HTMLResponse)
 async def agenda(request: Request, db: Session = Depends(get_db)):
     user = require_profesional(request)
@@ -49,7 +62,7 @@ async def agenda(request: Request, db: Session = Depends(get_db)):
     fecha_anterior = (fecha_obj - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
     fecha_siguiente = (fecha_obj + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
-    mi_nombre = nombre_completo(user)
+    mi_nombre = nombre_publico(user, db)
 
     if vista == "mes":
         hoy = datetime.date.today()
@@ -118,7 +131,7 @@ async def informes(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    mi_nombre = nombre_completo(user)
+    mi_nombre = nombre_publico(user, db)
     buscar = request.query_params.get("q", "").strip()
 
     pacientes_ids = db.query(Turno.paciente_id).filter(
@@ -162,7 +175,7 @@ async def subir_informe(
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    mi_nombre = nombre_completo(user)
+    mi_nombre = nombre_publico(user, db)
     paciente = db.query(Paciente).join(Turno, Turno.paciente_id == Paciente.id).filter(
         Paciente.id == paciente_id,
         Paciente.activo == True,
