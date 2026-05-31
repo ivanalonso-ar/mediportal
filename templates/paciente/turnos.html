@@ -353,7 +353,13 @@ function onTipoChange() {
 
 {% block extra_scripts %}
 <script>
-function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+function toggleModal(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle('hidden');
+    if (id === 'modal-nuevo-turno' && !el.classList.contains('hidden')) {
+        refreshDisponibilidad();
+    }
+}
 document.addEventListener('DOMContentLoaded', function() {
     const today = new Date().toISOString().split('T')[0];
     document.querySelectorAll('input[type="date"]').forEach(i => i.min = today);

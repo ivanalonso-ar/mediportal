@@ -18,6 +18,7 @@ def hora_disponible(
     especialidad: str,
     profesional: str = "",
     exclude_turno_id: int | None = None,
+    lock: bool = False,
 ) -> bool:
     query = db.query(Turno).filter(
         Turno.fecha == fecha,
@@ -26,6 +27,10 @@ def hora_disponible(
     )
     if exclude_turno_id:
         query = query.filter(Turno.id != exclude_turno_id)
+    if lock:
+        # Bloquea filas conflictivas para serializar inserciones concurrentes
+        # en PostgreSQL. En SQLite es no-op silencioso.
+        query = query.with_for_update()
     activos = query.all()
 
     profesional = (profesional or "").strip()

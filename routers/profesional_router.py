@@ -217,8 +217,8 @@ async def subir_informe(
 
     crear_notificacion(
         db, paciente_id,
-        titulo="Nuevo resultado disponible",
-        mensaje=f"Se cargó un nuevo resultado: {titulo.strip()}.",
+        titulo="Resultado disponible",
+        mensaje=f"Los resultados de tu estudio {titulo.strip()} han sido cargados.",
         tipo="resultado"
     )
     try:

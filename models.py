@@ -1,5 +1,5 @@
 import datetime
-from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint, Index
+from sqlalchemy import Column, Integer, String, Boolean, DateTime, Date, ForeignKey, Text, UniqueConstraint, Index, text
 from sqlalchemy.orm import relationship
 from database import Base
 
@@ -130,9 +130,18 @@ class Turno(Base):
     profesional_ref = relationship("UsuarioStaff", foreign_keys=[profesional_id])
     logs = relationship("TurnoLog", back_populates="turno", cascade="all, delete-orphan")
 
-    # Fix 9: unique constraint para evitar doble turno mismo paciente/fecha/hora/especialidad
     __table_args__ = (
         UniqueConstraint("paciente_id", "fecha", "hora", "especialidad", name="uq_turno_paciente"),
+        # Índice único parcial: impide que dos pacientes distintos reserven el mismo
+        # slot (fecha+hora+profesional) simultáneamente. En PostgreSQL aplica sólo a
+        # estados activos, permitiendo re-reservar slots cancelados. En SQLite el
+        # WHERE se ignora pero los NULLs no compiten por unicidad.
+        Index(
+            "idx_turno_slot_profesional",
+            "fecha", "hora", "profesional",
+            unique=True,
+            postgresql_where=text("estado IN ('pendiente', 'confirmado') AND profesional IS NOT NULL"),
+        ),
     )
 
 
