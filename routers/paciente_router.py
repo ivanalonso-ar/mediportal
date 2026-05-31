@@ -15,8 +15,8 @@ from constants import ALLOWED_EXTENSIONS
 
 from templates_config import templates
 
-router = APIRouter(prefix="/profesional")
-logger = logging.getLogger("mediportal.profesional")
+router = APIRouter(prefix="/paciente")
+logger = logging.getLogger("mediportal.paciente")
 
 UPLOAD_DIR = "uploads/resultados"
 
@@ -187,7 +187,7 @@ async def subir_informe(
         Turno.profesional == mi_nombre,
     ).first()
     if not paciente:
-        return RedirectResponse(url="/profesional/informes?msg=Paciente+no+autorizado.&tipo_msg=error", status_code=302)
+        return RedirectResponse(url="/paciente/informes?msg=Paciente+no+autorizado.&tipo_msg=error", status_code=302)
 
     file_path = None
     file_name = None
@@ -196,7 +196,7 @@ async def subir_informe(
         ext = os.path.splitext(archivo.filename)[1].lower()
         if ext not in ALLOWED_EXTENSIONS:
             return RedirectResponse(
-                url="/profesional/informes?msg=Tipo+de+archivo+no+permitido.&tipo_msg=error",
+                url="/paciente/informes?msg=Tipo+de+archivo+no+permitido.&tipo_msg=error",
                 status_code=302
             )
         contenido = await archivo.read()
@@ -204,7 +204,7 @@ async def subir_informe(
             file_path, file_name = subir_archivo(contenido, archivo.filename, ext)
         except Exception:
             logger.exception("Error al subir archivo de informe.")
-            return RedirectResponse(url="/profesional/informes?msg=No+se+pudo+guardar+el+archivo.&tipo_msg=error", status_code=302)
+            return RedirectResponse(url="/paciente/informes?msg=No+se+pudo+guardar+el+archivo.&tipo_msg=error", status_code=302)
 
     resultado = Resultado(
         paciente_id=paciente_id, titulo=titulo.strip(),
