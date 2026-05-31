@@ -134,15 +134,15 @@ async def solicitar_turno(
     if not destino:
         return RedirectResponse(url="/paciente/turnos?msg=Paciente+no+encontrado.&tipo=error", status_code=302)
 
-    if not hora_disponible(db, fecha, hora, especialidad):
+    # Verificación con lock para serializar requests concurrentes en PostgreSQL
+    if not hora_disponible(db, fecha, hora, especialidad,
+                           profesional=profesional_nombre.strip() if profesional_nombre else "",
+                           lock=True):
         return RedirectResponse(
             url=f"/paciente/turnos?msg=Ese+horario+ya+se+ocupo.+Elegi+otro.&tipo=error&para={destino_id}",
             status_code=302
         )
 
-    # Fix 8: impedir ciclos en grupo familiar — validación en router
-    # (si A es titular de B, B no puede ser titular de A)
-    # Se maneja en invitar_familiar con check adicional
     turno = Turno(
         paciente_id=destino_id,
         fecha=fecha, hora=hora, especialidad=especialidad,
@@ -156,7 +156,7 @@ async def solicitar_turno(
     except SQLAlchemyError:
         db.rollback()
         logger.exception("Error de base de datos al solicitar turno.")
-        return RedirectResponse(url=f"/paciente/turnos?msg=No+se+pudo+solicitar+el+turno.&tipo=error&para={destino_id}", status_code=302)
+        return RedirectResponse(url=f"/paciente/turnos?msg=Ese+horario+ya+fue+tomado.+Elegi+otro.&tipo=error&para={destino_id}", status_code=302)
     return RedirectResponse(
         url=f"/paciente/turnos?msg=Turno+solicitado.&tipo=success&para={destino_id}",
         status_code=302
@@ -197,8 +197,20 @@ async def cancelar_turno(
     ).first()
 
     if turno and turno.estado in ("pendiente", "confirmado"):
+        import datetime as _dt
         pac = db.query(Paciente).filter(Paciente.id == turno.paciente_id).first()
         turno.estado = "cancelado"
+        try:
+            fecha_fmt = _dt.datetime.strptime(turno.fecha, "%Y-%m-%d").strftime("%d/%m/%Y")
+        except ValueError:
+            fecha_fmt = turno.fecha
+        profesional_nombre_notif = turno.profesional or "el profesional asignado"
+        crear_notificacion(
+            db, turno.paciente_id,
+            titulo="Turno cancelado",
+            mensaje=f"Tu turno para el día {fecha_fmt} a las {turno.hora} hs con {profesional_nombre_notif} ha sido cancelado.",
+            tipo="turno_cancelado",
+        )
         db.commit()
         if pac and pac.email:
             mail_turno_cancelado(pac.email, pac.nombre, turno.especialidad, turno.fecha, turno.hora)

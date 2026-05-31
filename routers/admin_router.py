@@ -549,6 +549,20 @@ async def actualizar_estado_turno(
         db.commit()
 
         paciente = turno.paciente
+        if estado == "cancelado" and paciente:
+            import datetime as _dt
+            try:
+                fecha_fmt = _dt.datetime.strptime(turno.fecha, "%Y-%m-%d").strftime("%d/%m/%Y")
+            except ValueError:
+                fecha_fmt = turno.fecha
+            profesional_notif = turno.profesional or "el profesional asignado"
+            crear_notificacion(
+                db, paciente.id,
+                titulo="Turno cancelado",
+                mensaje=f"Tu turno para el día {fecha_fmt} a las {turno.hora} hs con {profesional_notif} ha sido cancelado.",
+                tipo="turno_cancelado",
+            )
+            db.commit()
         if paciente and paciente.email:
             if estado == "confirmado":
                 mail_turno_confirmado(paciente.email, paciente.nombre, turno.especialidad,
@@ -676,9 +690,9 @@ async def subir_resultado(
 
     crear_notificacion(
         db, paciente_id,
-        titulo="Nuevo resultado disponible",
-        mensaje=f"Se cargó un nuevo resultado: {titulo.strip()}.",
-        tipo="resultado"
+        titulo="Resultado disponible",
+        mensaje=f"Los resultados de tu estudio {titulo.strip()} han sido cargados.",
+        tipo="resultado",
     )
     try:
         db.commit()
