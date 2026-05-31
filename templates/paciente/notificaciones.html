@@ -34,7 +34,7 @@
         <div class="flex-shrink-0 w-9 h-9 rounded-full flex items-center justify-center mt-0.5
             {% if n.tipo == 'turno_confirmado' %}bg-blue-100 dark:bg-blue-900/40
             {% elif n.tipo == 'turno_cancelado' %}bg-red-100 dark:bg-red-900/40
-            {% elif n.tipo == 'informe' %}bg-sky-100 dark:bg-sky-900/40
+            {% elif n.tipo in ('resultado', 'informe') %}bg-sky-100 dark:bg-sky-900/40
             {% else %}bg-slate-100 dark:bg-slate-800{% endif %}">
             {% if n.tipo == 'turno_confirmado' %}
             <svg class="w-4 h-4 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
@@ -44,7 +44,7 @@
             <svg class="w-4 h-4 text-red-500 dark:text-red-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/>
             </svg>
-            {% elif n.tipo == 'informe' %}
+            {% elif n.tipo in ('resultado', 'informe') %}
             <svg class="w-4 h-4 text-sky-600 dark:text-sky-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
