@@ -10,6 +10,11 @@ from slowapi.errors import RateLimitExceeded
 from logging_config import setup_logging
 setup_logging()
 
+from templates_config import templates
+from fecha_utils import fecha_es, fecha_corta_es
+templates.env.filters["fecha_es"] = fecha_es
+templates.env.filters["fecha_corta_es"] = fecha_corta_es
+
 from database import engine
 import models
 from routers import auth_router, paciente_router, admin_router, profesional_router

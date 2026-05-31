@@ -1,139 +1,221 @@
-from templates_config import templates
 import os
-import re
-import mimetypes
+import datetime
 import logging
-from fastapi import APIRouter, Request, Form, Depends
-from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
+from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
+from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
+from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
-from models import Paciente, Turno, Resultado, Aviso, Notificacion, GrupoFamiliar, SolicitudGrupo
-from obras_sociales import listar_obras_sociales
-from horarios import catalogo_horarios
-from disponibilidad import hora_disponible, horas_sin_disponibilidad
+from models import Paciente, Turno, Resultado, UsuarioStaff
+from auth import get_current_user
 from notif_utils import crear_notificacion
-from auth import get_current_user, verify_password, get_password_hash, create_access_token, set_auth_cookie
-from mail import mail_cambio_password, mail_turno_cancelado
-from storage import generar_url_firmada
+from storage import subir_archivo
+from constants import ALLOWED_EXTENSIONS
 
-router = APIRouter(prefix="/paciente")
-logger = logging.getLogger("mediportal.paciente")
+router = APIRouter(prefix="/profesional")
+templates = Jinja2Templates(directory="templates")
+logger = logging.getLogger("mediportal.profesional")
 
-RE_SOLO_LETRAS = re.compile(r"^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s\-']+$")
-RE_SOLO_NUMEROS = re.compile(r"^\d+$")
+UPLOAD_DIR = "uploads/resultados"
+
+ALLOWED_EXTENSIONS = {
+    ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
+    ".tiff", ".tif", ".doc", ".docx", ".xls", ".xlsx", ".txt",
+    ".zip", ".rar", ".dcm", ".mp4", ".avi", ".mov",
+}
 
 
-def require_paciente(request: Request):
+def require_profesional(request: Request):
     user = get_current_user(request)
-    if not user or user.get("tipo") != "paciente":
-        return None
-    if user.get("primer_login"):
+    if not user or user.get("tipo") != "staff" or user.get("rol") != "profesional":
         return None
     return user
 
 
-def _notif_count(db, paciente_id):
-    return db.query(Notificacion).filter(
-        Notificacion.paciente_id == paciente_id,
-        Notificacion.leido == False
-    ).count()
+def nombre_completo(user: dict) -> str:
+    return f"{user.get('nombre', '')} {user.get('apellido', '')}".strip()
 
 
-# ─── Turnos ───────────────────────────────────────────────────────────────────
+def nombre_publico(user: dict, db) -> str:
+    from horarios import catalogo_horarios
+    nombre = user.get("nombre", "")
+    apellido = user.get("apellido", "")
+    catalogo = catalogo_horarios(db)
+    for profs in catalogo["profesionales"].values():
+        for p in profs:
+            # Match por nombre_staff/apellido_staff (defaults hardcodeados)
+            if p.get("nombre_staff") == nombre and p.get("apellido_staff") == apellido:
+                return p["nombre"]
+            # Match por apellido dentro del nombre_publico (ej: "Dr. Torres, Sebastian")
+            nombre_pub = p.get("nombre", "")
+            if apellido and apellido.lower() in nombre_pub.lower() and nombre and nombre.lower() in nombre_pub.lower():
+                return nombre_pub
+    return f"{nombre} {apellido}".strip()
 
-@router.get("/turnos", response_class=HTMLResponse)
-async def turnos_page(request: Request, db: Session = Depends(get_db)):
-    user = require_paciente(request)
+
+@router.get("/agenda", response_class=HTMLResponse)
+async def agenda(request: Request, db: Session = Depends(get_db)):
+    user = require_profesional(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    pid = int(user["sub"])
-    paciente = db.query(Paciente).filter(Paciente.id == pid).first()
+    vista = request.query_params.get("vista", "dia")
+    fecha_str = request.query_params.get("fecha", datetime.date.today().strftime("%Y-%m-%d"))
+    fecha_obj = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
+    fecha_anterior = (fecha_obj - datetime.timedelta(days=1)).strftime("%Y-%m-%d")
+    fecha_siguiente = (fecha_obj + datetime.timedelta(days=1)).strftime("%Y-%m-%d")
 
-    # IDs propios + miembros del grupo
-    miembros_rel = db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == pid).all()
-    miembro_ids = [m.miembro_id for m in miembros_rel]
-    todos_ids = [pid] + miembro_ids
-    miembros = [db.query(Paciente).filter(Paciente.id == mid).first() for mid in miembro_ids]
+    mi_nombre = nombre_publico(user, db)
 
-    # Paciente seleccionado (para gestionar turno de familiar)
-    paciente_sel_id = int(request.query_params.get("para", pid))
-    if paciente_sel_id not in todos_ids:
-        paciente_sel_id = pid
-    paciente_sel = db.query(Paciente).filter(Paciente.id == paciente_sel_id).first()
+    if vista == "mes":
+        hoy = datetime.date.today()
+        primer_dia_mes = fecha_obj.replace(day=1)
+        if fecha_obj.month == 12:
+            ultimo_dia_mes = fecha_obj.replace(year=fecha_obj.year+1, month=1, day=1) - datetime.timedelta(days=1)
+        else:
+            ultimo_dia_mes = fecha_obj.replace(month=fecha_obj.month+1, day=1) - datetime.timedelta(days=1)
 
-    turnos = db.query(Turno).filter(
-        Turno.paciente_id == paciente_sel_id
-    ).order_by(Turno.fecha.desc(), Turno.hora.desc()).all()
+        desde = max(hoy, primer_dia_mes).strftime("%Y-%m-%d")
+        hasta = ultimo_dia_mes.strftime("%Y-%m-%d")
 
-    avisos = db.query(Aviso).filter(Aviso.activo == True).order_by(Aviso.orden.asc()).all()
-    catalogo = catalogo_horarios(db)
+        turnos_raw = db.query(Turno).filter(
+            Turno.profesional == mi_nombre,
+            Turno.fecha >= desde,
+            Turno.fecha <= hasta,
+            Turno.estado.notin_(["cancelado"])
+        ).order_by(Turno.fecha.asc(), Turno.hora.asc()).all()
 
-    return templates.TemplateResponse("paciente/turnos.html", {
+        from collections import defaultdict
+        turnos_por_dia = defaultdict(list)
+        for t in turnos_raw:
+            turnos_por_dia[t.fecha].append(t)
+        turnos_mes = dict(sorted(turnos_por_dia.items()))
+
+        dias_mes = []
+        d = max(hoy, primer_dia_mes)
+        while d <= ultimo_dia_mes:
+            dias_mes.append(d.strftime("%Y-%m-%d"))
+            d += datetime.timedelta(days=1)
+        dias_libres = [d for d in dias_mes if d not in turnos_mes]
+
+        return templates.TemplateResponse("profesional/agenda.html", {
+            "request": request, "user": user,
+            "vista": "mes",
+            "fecha": fecha_str,
+            "fecha_obj": fecha_obj,
+            "turnos_mes": turnos_mes,
+            "dias_libres": dias_libres,
+            "mes_anterior": (primer_dia_mes - datetime.timedelta(days=1)).replace(day=1).strftime("%Y-%m-%d"),
+            "mes_siguiente": (ultimo_dia_mes + datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
+        })
+    else:
+        turnos = db.query(Turno).filter(
+            Turno.fecha == fecha_str,
+            Turno.profesional == mi_nombre,
+            Turno.estado.notin_(["cancelado"])
+        ).order_by(Turno.hora.asc(), Turno.tipo.asc()).all()
+
+        return templates.TemplateResponse("profesional/agenda.html", {
+            "request": request, "user": user,
+            "vista": "dia",
+            "turnos": turnos,
+            "fecha": fecha_str,
+            "fecha_obj": fecha_obj,
+            "fecha_anterior": fecha_anterior,
+            "fecha_siguiente": fecha_siguiente,
+            "msg": request.query_params.get("msg", ""),
+            "msg_tipo": request.query_params.get("tipo_msg", ""),
+        })
+
+
+@router.get("/informes", response_class=HTMLResponse)
+async def informes(request: Request, db: Session = Depends(get_db)):
+    user = require_profesional(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    mi_nombre = nombre_publico(user, db)
+    buscar = request.query_params.get("q", "").strip()
+
+    pacientes_ids = db.query(Turno.paciente_id).filter(
+        Turno.profesional == mi_nombre
+    ).distinct().all()
+    pacientes_ids = [p[0] for p in pacientes_ids]
+
+    query = db.query(Paciente).filter(Paciente.id.in_(pacientes_ids), Paciente.activo == True)
+    if buscar:
+        query = query.filter(
+            (Paciente.dni.contains(buscar)) |
+            (Paciente.nombre.contains(buscar)) |
+            (Paciente.apellido.contains(buscar))
+        )
+    pacientes = query.order_by(Paciente.apellido).all()
+
+    resultados = db.query(Resultado).filter(
+        Resultado.subido_por == mi_nombre
+    ).order_by(Resultado.created_at.desc()).limit(20).all()
+
+    return templates.TemplateResponse("profesional/informes.html", {
         "request": request, "user": user,
-        "notif_no_leidas": _notif_count(db, pid),
-        "paciente": paciente,
-        "paciente_sel": paciente_sel,
-        "miembros": miembros,
-        "turnos": turnos,
-        "especialidades": catalogo["especialidades"],
-        "turno_por_especialidad": catalogo["turno_por_especialidad"],
-        "slots_manana": catalogo["slots_manana"],
-        "slots_tarde": catalogo["slots_tarde"],
-        "profesionales_json": catalogo["profesionales_json"],
-        "avisos": avisos,
+        "pacientes": pacientes, "resultados": resultados,
+        "buscar": buscar,
         "msg": request.query_params.get("msg", ""),
-        "msg_tipo": request.query_params.get("tipo", ""),
+        "msg_tipo": request.query_params.get("tipo_msg", ""),
     })
 
 
-@router.post("/turnos/solicitar")
-async def solicitar_turno(
+@router.post("/informes/subir")
+async def subir_informe(
     request: Request,
-    fecha: str = Form(...),
-    hora: str = Form(...),
-    especialidad: str = Form(...),
-    profesional_nombre: str = Form(""),
-    tipo_consulta: str = Form("obra_social"),
-    observaciones: str = Form(""),
-    para_paciente_id: int = Form(None),
+    paciente_id: int = Form(...),
+    titulo: str = Form(...),
+    descripcion: str = Form(""),
+    fecha_estudio: str = Form(""),
+    archivo: UploadFile = File(None),
     db: Session = Depends(get_db)
 ):
-    user = require_paciente(request)
+    user = require_profesional(request)
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    pid = int(user["sub"])
-    if tipo_consulta not in ("obra_social", "particular"):
-        tipo_consulta = "obra_social"
+    mi_nombre = nombre_publico(user, db)
+    paciente = db.query(Paciente).join(Turno, Turno.paciente_id == Paciente.id).filter(
+        Paciente.id == paciente_id,
+        Paciente.activo == True,
+        Turno.profesional == mi_nombre,
+    ).first()
+    if not paciente:
+        return RedirectResponse(url="/profesional/informes?msg=Paciente+no+autorizado.&tipo_msg=error", status_code=302)
 
-    # Validar fecha no pasada
-    import datetime as dt
-    try:
-        fecha_dt = dt.datetime.strptime(fecha, "%Y-%m-%d").date()
-        if fecha_dt < dt.date.today():
-            return RedirectResponse(url=f"/paciente/turnos?msg=No+podes+solicitar+un+turno+en+una+fecha+pasada.&tipo=error&para={para_paciente_id or pid}", status_code=302)
-    except ValueError:
-        return RedirectResponse(url="/paciente/turnos?msg=Fecha+invalida.&tipo=error", status_code=302)
+    file_path = None
+    file_name = None
 
-    # Validar que el paciente destino sea el titular o un miembro del grupo
-    if para_paciente_id and para_paciente_id != pid:
-        rel = db.query(GrupoFamiliar).filter(
-            GrupoFamiliar.titular_id == pid,
-            GrupoFamiliar.miembro_id == para_paciente_id
-        ).first()
-        if not rel:
-            return RedirectResponse(url="/paciente/turnos?msg=Paciente+no+autorizado.&tipo=error", status_code=302)
-        destino_id = para_paciente_id
-    else:
-        destino_id = pid
+    if archivo and archivo.filename:
+        ext = os.path.splitext(archivo.filename)[1].lower()
+        if ext not in ALLOWED_EXTENSIONS:
+            return RedirectResponse(
+                url="/profesional/informes?msg=Tipo+de+archivo+no+permitido.&tipo_msg=error",
+                status_code=302
+            )
+        contenido = await archivo.read()
+        try:
+            file_path, file_name = subir_archivo(contenido, archivo.filename, ext)
+        except Exception:
+            logger.exception("Error al subir archivo de informe.")
+            return RedirectResponse(url="/profesional/informes?msg=No+se+pudo+guardar+el+archivo.&tipo_msg=error", status_code=302)
 
-    destino = db.query(Paciente).filter(Paciente.id == destino_id, Paciente.activo == True).first()
-    if not destino:
-        return RedirectResponse(url="/paciente/turnos?msg=Paciente+no+encontrado.&tipo=error", status_code=302)
+    resultado = Resultado(
+        paciente_id=paciente_id, titulo=titulo.strip(),
+        descripcion=descripcion.strip(), archivo_nombre=file_name,
+        archivo_path=file_path, fecha_estudio=fecha_estudio,
+        subido_por=mi_nombre,
+    )
+    db.add(resultado)
+    db.flush()
 
+<<<<<<< Updated upstream
     # Verificación con lock para serializar requests concurrentes en PostgreSQL
     if not hora_disponible(db, fecha, hora, especialidad,
                            profesional=profesional_nombre.strip() if profesional_nombre else "",
@@ -149,12 +231,19 @@ async def solicitar_turno(
         profesional=profesional_nombre.strip() if profesional_nombre else None,
         tipo_consulta=tipo_consulta,
         observaciones=observaciones, estado="confirmado"
+=======
+    crear_notificacion(
+        db, paciente_id,
+        titulo="Nuevo resultado disponible",
+        mensaje=f"Se cargó un nuevo resultado: {titulo.strip()}.",
+        tipo="resultado"
+>>>>>>> Stashed changes
     )
-    db.add(turno)
     try:
         db.commit()
     except SQLAlchemyError:
         db.rollback()
+<<<<<<< Updated upstream
         logger.exception("Error de base de datos al solicitar turno.")
         return RedirectResponse(url=f"/paciente/turnos?msg=Ese+horario+ya+fue+tomado.+Elegi+otro.&tipo=error&para={destino_id}", status_code=302)
     return RedirectResponse(
@@ -604,3 +693,9 @@ async def eliminar_notificacion(request: Request, notif_id: int, db: Session = D
         db.delete(n)
         db.commit()
     return RedirectResponse(url="/paciente/notificaciones", status_code=302)
+=======
+        logger.exception("Error de base de datos al subir informe.")
+        return RedirectResponse(url="/profesional/informes?msg=No+se+pudo+cargar+el+informe.&tipo_msg=error", status_code=302)
+
+    return RedirectResponse(url="/profesional/informes?msg=Informe+cargado+correctamente.&tipo_msg=success", status_code=302)
+>>>>>>> Stashed changes
