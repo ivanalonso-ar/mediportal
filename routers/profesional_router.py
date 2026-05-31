@@ -13,12 +13,9 @@ from auth import get_current_user
 from notif_utils import crear_notificacion
 from storage import subir_archivo
 from constants import ALLOWED_EXTENSIONS
-from fecha_utils import fecha_es, fecha_corta_es
 
 router = APIRouter(prefix="/profesional")
 templates = Jinja2Templates(directory="templates")
-templates.env.filters["fecha_es"] = fecha_es
-templates.env.filters["fecha_corta_es"] = fecha_corta_es
 logger = logging.getLogger("mediportal.profesional")
 
 UPLOAD_DIR = "uploads/resultados"
@@ -48,8 +45,13 @@ def nombre_publico(user: dict, db) -> str:
     catalogo = catalogo_horarios(db)
     for profs in catalogo["profesionales"].values():
         for p in profs:
+            # Match por nombre_staff/apellido_staff (defaults hardcodeados)
             if p.get("nombre_staff") == nombre and p.get("apellido_staff") == apellido:
                 return p["nombre"]
+            # Match por apellido dentro del nombre_publico (ej: "Dr. Torres, Sebastian")
+            nombre_pub = p.get("nombre", "")
+            if apellido and apellido.lower() in nombre_pub.lower() and nombre and nombre.lower() in nombre_pub.lower():
+                return nombre_pub
     return f"{nombre} {apellido}".strip()
 
 
