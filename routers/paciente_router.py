@@ -3,7 +3,6 @@ import datetime
 import logging
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -14,8 +13,9 @@ from notif_utils import crear_notificacion
 from storage import subir_archivo
 from constants import ALLOWED_EXTENSIONS
 
+from templates_config import templates
+
 router = APIRouter(prefix="/profesional")
-templates = Jinja2Templates(directory="templates")
 logger = logging.getLogger("mediportal.profesional")
 
 UPLOAD_DIR = "uploads/resultados"
