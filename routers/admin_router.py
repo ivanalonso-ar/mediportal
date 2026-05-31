@@ -611,12 +611,13 @@ async def resultados_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=302)
 
     mi_nombre = nombre_publico_staff(user, db)
+    nombre_raw = staff_nombre(user)
     rol = user.get("rol", "")
 
     # Profesionales ven solo sus pacientes; admin/recepcion ven todos
     if rol == "profesional":
         paciente_ids = [t[0] for t in db.query(Turno.paciente_id).filter(
-            Turno.profesional == mi_nombre
+            (Turno.profesional == mi_nombre) | (Turno.profesional == nombre_raw)
         ).distinct().all()]
         pacientes = db.query(Paciente).filter(
             Paciente.id.in_(paciente_ids), Paciente.activo == True
