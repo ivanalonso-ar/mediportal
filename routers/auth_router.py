@@ -29,6 +29,8 @@ async def login_page(request: Request):
     user = get_current_user(request)
     if user:
         if user.get("tipo") == "staff":
+            if user.get("rol") == "profesional":
+                return RedirectResponse(url="/profesional/agenda")
             return RedirectResponse(url="/admin/")
         return RedirectResponse(url="/paciente/turnos")
     return templates.TemplateResponse("login.html", {"request": request})
