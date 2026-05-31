@@ -1,0 +1,364 @@
+{% extends "base_paciente.html" %}
+{% set active_page = "turnos" %}
+{% block title %}Mis Turnos — MediPortal{% endblock %}
+
+{% block content %}
+
+{% if msg %}
+<div class="auto-dismiss mb-5 px-4 py-3 rounded-xl text-sm flex items-center gap-2 border
+    {% if msg_tipo == 'success' %}bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-300
+    {% else %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
+    {% if msg_tipo == 'success' %}
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    {% else %}
+    <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    {% endif %}
+    {{ msg }}
+</div>
+{% endif %}
+
+{% if avisos %}
+<div class="mb-5 space-y-2">
+    {% for a in avisos %}
+    <div class="flex items-start gap-3 px-4 py-3 rounded-xl border text-sm
+        {% if a.tipo == 'importante' %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300
+        {% elif a.tipo == 'warning' %}bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300
+        {% else %}bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300{% endif %}">
+        <span class="flex-shrink-0 mt-0.5">{% if a.tipo == 'importante' %}🔴{% elif a.tipo == 'warning' %}⚠️{% else %}ℹ️{% endif %}</span>
+        <div><p class="font-semibold">{{ a.titulo }}</p><p class="mt-0.5 opacity-90">{{ a.contenido }}</p></div>
+    </div>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Hero header -->
+<div class="relative overflow-hidden rounded-2xl bg-gradient-to-br from-accent-600 to-accent-800 text-white p-6 mb-6 shadow-lg">
+    <div class="absolute inset-0 opacity-10" style="background-image:radial-gradient(circle at 80% 20%, white 1px, transparent 1px);background-size:24px 24px;"></div>
+    <div class="relative flex items-start justify-between gap-4 flex-wrap">
+        <div>
+            <p class="text-accent-200 text-sm font-medium mb-1">Bienvenido/a</p>
+            <h1 class="text-2xl font-bold">{{ paciente.nombre }} {{ paciente.apellido }}</h1>
+            {% if paciente.obra_social %}
+            <p class="text-accent-200 text-sm mt-1 flex items-center gap-1.5">
+                <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                {{ paciente.obra_social }}
+            </p>
+            {% endif %}
+        </div>
+        <button onclick="toggleModal('modal-nuevo-turno')"
+            class="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-white/20 hover:bg-white/30 backdrop-blur-sm text-white text-sm font-semibold transition-colors border border-white/30 flex-shrink-0">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Solicitar turno
+        </button>
+    </div>
+    <!-- Stats rápidas -->
+    <div class="relative mt-5 grid grid-cols-3 gap-3">
+        {% set confirmados = turnos | selectattr('estado', 'equalto', 'confirmado') | list %}
+        {% set pendientes = turnos | selectattr('estado', 'equalto', 'pendiente') | list %}
+        {% set completados = turnos | selectattr('estado', 'equalto', 'completado') | list %}
+        <div class="bg-white/15 rounded-xl px-3 py-3 text-center backdrop-blur-sm">
+            <p class="text-xl font-bold">{{ confirmados | length }}</p>
+            <p class="text-accent-200 text-xs mt-0.5">Confirmados</p>
+        </div>
+        <div class="bg-white/15 rounded-xl px-3 py-3 text-center backdrop-blur-sm">
+            <p class="text-xl font-bold">{{ pendientes | length }}</p>
+            <p class="text-accent-200 text-xs mt-0.5">Pendientes</p>
+        </div>
+        <div class="bg-white/15 rounded-xl px-3 py-3 text-center backdrop-blur-sm">
+            <p class="text-xl font-bold">{{ completados | length }}</p>
+            <p class="text-accent-200 text-xs mt-0.5">Completados</p>
+        </div>
+    </div>
+</div>
+
+<!-- Selector familiar -->
+{% if miembros %}
+<div class="mb-5 flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+    <a href="/paciente/turnos?para={{ paciente.id }}"
+        class="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors
+            {% if paciente_sel.id == paciente.id %}bg-accent-600 text-white border-accent-600{% else %}bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-accent-400{% endif %}">
+        <div class="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center text-xs font-bold">{{ paciente.nombre[0] }}</div>
+        {{ paciente.nombre }}
+    </a>
+    {% for m in miembros %}
+    <a href="/paciente/turnos?para={{ m.id }}"
+        class="flex-shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors
+            {% if paciente_sel.id == m.id %}bg-accent-600 text-white border-accent-600{% else %}bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-accent-400{% endif %}">
+        <div class="w-6 h-6 rounded-full {% if paciente_sel.id == m.id %}bg-white/20{% else %}bg-slate-100 dark:bg-slate-700{% endif %} flex items-center justify-center text-xs font-bold">{{ m.nombre[0] }}</div>
+        {{ m.nombre }}
+    </a>
+    {% endfor %}
+</div>
+{% endif %}
+
+<!-- Lista de turnos -->
+{% if turnos %}
+<div class="space-y-3">
+    {% for t in turnos %}
+    <div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 overflow-hidden shadow-sm hover:shadow-md transition-shadow">
+        <div class="flex items-stretch">
+            <!-- Barra de color lateral según estado -->
+            <div class="w-1.5 flex-shrink-0
+                {% if t.estado == 'confirmado' %}bg-sky-400
+                {% elif t.estado == 'pendiente' %}bg-amber-400
+                {% elif t.estado == 'completado' %}bg-emerald-400
+                {% else %}bg-slate-300{% endif %}"></div>
+
+            <div class="flex-1 p-4">
+                <div class="flex items-start justify-between gap-3 flex-wrap">
+                    <div class="flex items-start gap-3">
+                        <!-- Ícono especialidad -->
+                        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
+                            {% if t.estado == 'confirmado' %}bg-sky-50 dark:bg-sky-900/20
+                            {% elif t.estado == 'pendiente' %}bg-amber-50 dark:bg-amber-900/20
+                            {% elif t.estado == 'completado' %}bg-emerald-50 dark:bg-emerald-900/20
+                            {% else %}bg-slate-100 dark:bg-slate-800{% endif %}">
+                            <svg class="w-5 h-5
+                                {% if t.estado == 'confirmado' %}text-sky-500
+                                {% elif t.estado == 'pendiente' %}text-amber-500
+                                {% elif t.estado == 'completado' %}text-emerald-500
+                                {% else %}text-slate-400{% endif %}"
+                                fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
+                                <line x1="16" y1="2" x2="16" y2="6"/>
+                                <line x1="8" y1="2" x2="8" y2="6"/>
+                                <line x1="3" y1="10" x2="21" y2="10"/>
+                            </svg>
+                        </div>
+                        <div>
+                            <div class="flex items-center gap-2 flex-wrap">
+                                <span class="font-semibold text-slate-800 dark:text-slate-100">{{ t.especialidad }}</span>
+                                {% if t.tipo_consulta == 'particular' %}
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">Particular</span>
+                                {% endif %}
+                                <span class="px-2 py-0.5 rounded-full text-xs font-medium badge-{{ t.estado }}">{{ t.estado | capitalize }}</span>
+                            </div>
+                            <div class="flex items-center gap-3 mt-1.5 flex-wrap">
+                                <span class="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                                    {{ t.fecha }}
+                                </span>
+                                <span class="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                                    {{ t.hora }} hs
+                                </span>
+                                {% if t.profesional %}
+                                <span class="flex items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+                                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/></svg>
+                                    {{ t.profesional }}
+                                </span>
+                                {% endif %}
+                            </div>
+                            {% if t.observaciones %}
+                            <p class="text-xs text-slate-400 dark:text-slate-500 mt-1.5 italic">{{ t.observaciones }}</p>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {% if t.estado in ('pendiente', 'confirmado') %}
+                    <form method="post" action="/paciente/turnos/cancelar/{{ t.id }}" class="flex-shrink-0">
+                        <button type="submit" onclick="return confirm('¿Cancelar este turno?')"
+                            class="px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800 transition-colors">
+                            Cancelar
+                        </button>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% else %}
+<div class="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 p-12 text-center shadow-sm">
+    <div class="w-16 h-16 rounded-2xl bg-accent-50 dark:bg-accent-900/20 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-8 h-8 text-accent-400" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+    </div>
+    <p class="font-semibold text-slate-700 dark:text-slate-300">No hay turnos registrados</p>
+    <p class="text-slate-400 text-sm mt-1">Solicitá tu primer turno y aparecerá aquí.</p>
+    <button onclick="toggleModal('modal-nuevo-turno')"
+        class="mt-5 px-5 py-2.5 rounded-xl bg-accent-600 hover:bg-accent-700 text-white text-sm font-semibold transition-colors shadow-sm">
+        Solicitar turno
+    </button>
+</div>
+{% endif %}
+
+
+<!-- Modal: Solicitar turno -->
+<div id="modal-nuevo-turno" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center">
+    <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" onclick="toggleModal('modal-nuevo-turno')"></div>
+    <div class="relative bg-white dark:bg-slate-900 rounded-t-3xl sm:rounded-2xl shadow-2xl border border-slate-200 dark:border-slate-800 w-full sm:max-w-md p-6 max-h-[92vh] overflow-y-auto">
+        <!-- Handle mobile -->
+        <div class="sm:hidden w-10 h-1 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-4"></div>
+        <div class="flex items-center justify-between mb-5">
+            <h2 class="font-bold text-lg text-slate-800 dark:text-slate-100">Solicitar turno</h2>
+            <button onclick="toggleModal('modal-nuevo-turno')" class="p-1.5 text-slate-400 hover:text-slate-600 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            </button>
+        </div>
+
+        <form method="post" action="/paciente/turnos/solicitar" class="space-y-4">
+            {% if miembros %}
+            <input type="hidden" name="para_paciente_id" value="{{ paciente_sel.id }}">
+            {% endif %}
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Tipo de consulta</label>
+                <div class="flex gap-2">
+                    <label class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 cursor-pointer transition-colors has-[:checked]:border-accent-500 has-[:checked]:bg-accent-50 dark:has-[:checked]:bg-accent-900/20">
+                        <input type="radio" name="tipo_consulta" value="obra_social" checked onchange="onTipoChange()" class="text-accent-600">
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Obra social</span>
+                    </label>
+                    <label class="flex-1 flex items-center gap-2 px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 cursor-pointer transition-colors has-[:checked]:border-violet-500 has-[:checked]:bg-violet-50 dark:has-[:checked]:bg-violet-900/20">
+                        <input type="radio" name="tipo_consulta" value="particular" onchange="onTipoChange()" class="text-violet-600">
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Particular</span>
+                    </label>
+                </div>
+            </div>
+
+            <div id="aviso-particular" class="hidden px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                <p class="text-sm font-semibold text-amber-800 dark:text-amber-300">⚠️ Consulta particular</p>
+                <p class="text-sm text-amber-700 dark:text-amber-400 mt-1">Las consultas particulares tienen costo adicional. Consultá con recepción el arancel vigente.</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Especialidad</label>
+                <select name="especialidad" id="sel-especialidad" required onchange="onEspecialidadChange()"
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <option value="">— Seleccioná una especialidad —</option>
+                    {% for e in especialidades %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                </select>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Profesional</label>
+                <select name="profesional_nombre" id="sel-profesional" required onchange="onProfesionalChange()"
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                    <option value="">— Primero elegí la especialidad —</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha</label>
+                    <input type="date" name="fecha" id="inp-fecha" required
+                        class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Horario</label>
+                    <select name="hora" id="sel-hora" required
+                        class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
+                        <option value="">Elegí especialidad</option>
+                    </select>
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Observaciones <span class="text-slate-400 font-normal">(opcional)</span></label>
+                <textarea name="observaciones" rows="2" placeholder="Motivo de consulta, síntomas..."
+                    class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-none"></textarea>
+            </div>
+
+            <div class="flex gap-3 pt-1">
+                <button type="button" onclick="toggleModal('modal-nuevo-turno')"
+                    class="flex-1 py-3 rounded-xl border border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                    Cancelar
+                </button>
+                <button type="submit"
+                    class="flex-1 py-3 rounded-xl bg-accent-600 hover:bg-accent-700 text-white text-sm font-semibold transition-colors shadow-sm">
+                    Confirmar turno
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+const PROFESIONALES_JSON = {{ profesionales_json | tojson }};
+const SLOTS_MANANA = [{{ slots_manana | map('tojson') | join(', ') }}];
+const SLOTS_TARDE = [{{ slots_tarde | map('tojson') | join(', ') }}];
+
+function onEspecialidadChange() {
+    const esp = document.getElementById('sel-especialidad').value;
+    const selProf = document.getElementById('sel-profesional');
+    const selHora = document.getElementById('sel-hora');
+
+    selProf.innerHTML = '<option value="">— Seleccioná un profesional —</option>';
+    selHora.innerHTML = '<option value="">— Primero elegí profesional —</option>';
+
+    if (!esp || !PROFESIONALES_JSON[esp]) return;
+
+    const profs = PROFESIONALES_JSON[esp];
+    profs.forEach(p => {
+        const opt = document.createElement('option');
+        opt.value = p.nombre;
+        opt.dataset.turno = p.turno;
+        opt.textContent = `${p.nombre} (${p.turno === 'manana' ? 'Mañana' : 'Tarde'})`;
+        selProf.appendChild(opt);
+    });
+
+    // Si hay solo un profesional, seleccionarlo automáticamente
+    if (profs.length === 1) {
+        selProf.value = profs[0].nombre;
+        onProfesionalChange();
+    }
+}
+
+function onProfesionalChange() {
+    const selProf = document.getElementById('sel-profesional');
+    const selHora = document.getElementById('sel-hora');
+    const opt = selProf.options[selProf.selectedIndex];
+
+    selHora.innerHTML = '<option value="">— Seleccioná un horario —</option>';
+    if (!selProf.value) return;
+
+    const slots = opt.dataset.turno === 'manana' ? SLOTS_MANANA : SLOTS_TARDE;
+    slots.forEach(s => {
+        const o = document.createElement('option');
+        o.value = s;
+        o.textContent = s + ' hs';
+        selHora.appendChild(o);
+    });
+    refreshDisponibilidad();
+}
+
+async function refreshDisponibilidad() {
+    const esp = document.getElementById('sel-especialidad').value;
+    const fecha = document.getElementById('inp-fecha').value;
+    const selHora = document.getElementById('sel-hora');
+    if (!esp || !fecha) return;
+    try {
+        const res = await fetch('/paciente/turnos/disponibilidad?' + new URLSearchParams({ especialidad: esp, fecha }));
+        if (!res.ok) return;
+        const data = await res.json();
+        const ocupados = new Set((data.ocupados || []).map(String));
+        [...selHora.options].forEach(opt => {
+            if (!opt.value) return;
+            opt.disabled = ocupados.has(opt.value);
+            opt.textContent = ocupados.has(opt.value) ? `${opt.value} hs (sin cupo)` : `${opt.value} hs`;
+        });
+        if (selHora.value && ocupados.has(selHora.value)) selHora.value = '';
+    } catch(e) {}
+}
+
+function onTipoChange() {
+    const particular = document.querySelector('input[name="tipo_consulta"][value="particular"]');
+    document.getElementById('aviso-particular').classList.toggle('hidden', !particular?.checked);
+}
+</script>
+
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.querySelectorAll('input[type="date"]').forEach(i => i.min = today);
+    const fecha = document.getElementById('inp-fecha');
+    if (fecha) fecha.addEventListener('change', refreshDisponibilidad);
+});
+</script>
+{% endblock %}

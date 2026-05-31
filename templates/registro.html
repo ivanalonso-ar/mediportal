@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+
+{% block title %}Registro — MediPortal{% endblock %}
+
+{% block body %}
+<div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-10">
+
+    <div class="w-full max-w-lg bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm p-8">
+
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
+                MediPortal
+            </h1>
+
+            <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
+                Crear cuenta de paciente
+            </p>
+        </div>
+
+        {% if error %}
+        <div class="mb-5 rounded-lg border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/30 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+            {{ error }}
+        </div>
+        {% endif %}
+
+        <form method="post" action="/registro" class="space-y-4">
+
+            <div class="grid grid-cols-2 gap-4">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Nombre *
+                    </label>
+
+                    <input
+                        type="text"
+                        name="nombre"
+                        required
+                        pattern="[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s\-']+"
+                        title="Solo letras, sin números"
+                        value="{{ form.nombre if form else '' }}"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Apellido *
+                    </label>
+
+                    <input
+                        type="text"
+                        name="apellido"
+                        required
+                        pattern="[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ\s\-']+"
+                        title="Solo letras, sin números"
+                        value="{{ form.apellido if form else '' }}"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                    >
+                </div>
+
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    DNI *
+                </label>
+
+                <input
+                    type="text"
+                    name="dni"
+                    required
+                    pattern="\d+"
+                    inputmode="numeric"
+                    oninput="this.value = this.value.replace(/\D/g, '')"
+                    title="Solo números, sin puntos ni espacios"
+                    value="{{ form.dni if form else '' }}"
+                    placeholder="Sin puntos ni espacios"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                >
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Email
+                </label>
+
+                <input
+                    type="email"
+                    name="email"
+                    value="{{ form.email if form else '' }}"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                >
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Teléfono
+                    </label>
+
+                    <input
+                        type="text"
+                        name="telefono"
+                        value="{{ form.telefono if form else '' }}"
+                        pattern="\d*"
+                        inputmode="numeric"
+                        oninput="this.value = this.value.replace(/\D/g, '')"
+                        title="Solo números, sin guiones ni espacios"
+                        placeholder="Ej: 1145678900"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                    >
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Fecha de nacimiento
+                    </label>
+
+                    <input
+                        type="date"
+                        name="fecha_nacimiento"
+                        value="{{ form.fecha_nacimiento if form else '' }}"
+                        class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                    >
+                </div>
+
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                    Obra social / Prepaga
+                </label>
+
+                <input
+                    type="text"
+                    name="obra_social"
+                    value="{{ form.obra_social if form else '' }}"
+                    class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 text-sm"
+                >
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 pt-2">
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Contraseña *
+                    </label>
+
+                    <div class="relative">
+                        <input
+                            type="password"
+                            name="password"
+                            id="pw1"
+                            required
+                            minlength="6"
+                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 pr-11 text-sm"
+                        >
+                        <button type="button" data-password-toggle="pw1" aria-label="Mostrar contrasena" aria-pressed="false"
+                            class="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-500 dark:text-slate-500 dark:hover:text-slate-300">
+                            <svg class="icon-eye-off h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 4.24A10.94 10.94 0 0112 4c5 0 9 4.5 10 8a13.05 13.05 0 01-3.16 4.75"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.61 6.61A13.18 13.18 0 002 12c1 3.5 5 8 10 8a10.87 10.87 0 005.39-1.45"/>
+                            </svg>
+                            <svg class="icon-eye hidden h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">
+                        Confirmar *
+                    </label>
+
+                    <div class="relative">
+                        <input
+                            type="password"
+                            name="confirmar_password"
+                            id="pw2"
+                            required
+                            minlength="6"
+                            class="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2.5 pr-11 text-sm"
+                        >
+                        <button type="button" data-password-toggle="pw2" aria-label="Mostrar contrasena" aria-pressed="false"
+                            class="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-lg text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-500 dark:text-slate-500 dark:hover:text-slate-300">
+                            <svg class="icon-eye-off h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 4.24A10.94 10.94 0 0112 4c5 0 9 4.5 10 8a13.05 13.05 0 01-3.16 4.75"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M6.61 6.61A13.18 13.18 0 002 12c1 3.5 5 8 10 8a10.87 10.87 0 005.39-1.45"/>
+                            </svg>
+                            <svg class="icon-eye hidden h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/>
+                                <circle cx="12" cy="12" r="3"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+
+            <p id="pw-match" class="text-xs hidden"></p>
+
+            <button
+                type="submit"
+                class="w-full rounded-xl bg-accent-600 hover:bg-accent-700 py-3 text-sm font-semibold text-white transition-colors"
+            >
+                Crear cuenta
+            </button>
+
+        </form>
+
+        <p class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+            ¿Ya tenés cuenta?
+
+            <a
+                href="/login"
+                class="text-accent-600 dark:text-accent-400 hover:underline"
+            >
+                Iniciá sesión
+            </a>
+        </p>
+
+    </div>
+
+</div>
+
+<script>
+const pw1 = document.getElementById("pw1");
+const pw2 = document.getElementById("pw2");
+const msg = document.getElementById("pw-match");
+
+function validarPasswords() {
+
+    if (!pw2.value) {
+        msg.classList.add("hidden");
+        return;
+    }
+
+    msg.classList.remove("hidden");
+
+    if (pw1.value === pw2.value) {
+        msg.textContent = "✓ Las contraseñas coinciden";
+        msg.className = "text-xs text-blue-600 dark:text-blue-400";
+    } else {
+        msg.textContent = "✗ Las contraseñas no coinciden";
+        msg.className = "text-xs text-red-500";
+    }
+}
+
+pw1.addEventListener("input", validarPasswords);
+pw2.addEventListener("input", validarPasswords);
+
+document.querySelectorAll('[data-password-toggle]').forEach(function(button) {
+    const input = document.getElementById(button.dataset.passwordToggle);
+    if (!input) return;
+    const eyeIcon = button.querySelector('.icon-eye');
+    const eyeOffIcon = button.querySelector('.icon-eye-off');
+
+    button.addEventListener('click', function() {
+        const isHidden = input.type === 'password';
+        input.type = isHidden ? 'text' : 'password';
+        button.setAttribute('aria-label', isHidden ? 'Ocultar contrasena' : 'Mostrar contrasena');
+        button.setAttribute('aria-pressed', String(isHidden));
+        eyeIcon.classList.toggle('hidden', !isHidden);
+        eyeOffIcon.classList.toggle('hidden', isHidden);
+        input.focus();
+    });
+});
+</script>
+
+<p class="mt-4 text-center text-xs text-slate-400">MediPortal &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
+
+{% endblock %}

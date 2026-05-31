@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}Login — MediPortal{% endblock %}
+
+{% block body %}
+<div class="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
+
+    <div class="w-full max-w-6xl grid lg:grid-cols-2 bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
+
+        <!-- PANEL IZQUIERDO -->
+        <div class="hidden lg:flex flex-col justify-between bg-gradient-to-br from-blue-600 to-blue-800 text-white p-12 relative overflow-hidden">
+
+            <div class="absolute inset-0 opacity-10">
+                <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full border border-white"></div>
+                <div class="absolute bottom-0 right-0 w-72 h-72 rounded-full border border-white"></div>
+            </div>
+
+            <div class="relative z-10">
+
+                <div class="flex items-center gap-4 mb-10">
+
+                    <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center text-3xl font-bold border border-white/20">
+                        M
+                    </div>
+
+                    <div>
+                        <h1 class="text-3xl font-bold">
+                            MediPortal
+                        </h1>
+
+                        <p class="text-blue-100 text-sm">
+                            Sistema médico integral
+                        </p>
+                    </div>
+
+                </div>
+
+                <div class="mt-16">
+
+                    <span class="inline-block bg-white/10 border border-white/20 rounded-full px-4 py-1 text-sm mb-5">
+                        Portal de Autogestión
+                    </span>
+
+                    <h2 class="text-5xl font-extrabold leading-tight max-w-lg">
+                        Gestioná tus turnos y consultas médicas en un solo lugar.
+                    </h2>
+
+                    <p class="mt-6 text-blue-100 text-lg leading-relaxed max-w-xl">
+                        Accedé a tu historial clínico, administrá turnos y conectate con profesionales de manera rápida y segura.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="relative z-10 text-xs text-blue-200">
+                MediPortal &copy; 2026 · Desarrollado por Hydra Solutions
+            </div>
+
+        </div>
+
+        <!-- LOGIN -->
+        <div class="flex items-center justify-center p-8 lg:p-14">
+
+            <div class="w-full max-w-md">
+
+                <!-- MOBILE HEADER -->
+                <div class="lg:hidden text-center mb-8">
+
+                    <div class="w-16 h-16 mx-auto rounded-2xl bg-accent-600 text-white flex items-center justify-center text-3xl font-bold shadow-lg">
+                        M
+                    </div>
+
+                    <h1 class="mt-4 text-3xl font-bold text-slate-800 dark:text-slate-100">
+                        MediPortal
+                    </h1>
+
+                    <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">
+                        Portal de Autogestión
+                    </p>
+
+                </div>
+
+                <!-- TITULO -->
+                <div class="mb-8">
+
+                    <h2 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
+                        Iniciar sesión
+                    </h2>
+
+                    <p class="text-slate-500 dark:text-slate-400 mt-2">
+                        Ingresá con tu cuenta para continuar.
+                    </p>
+
+                </div>
+
+                <!-- ERROR -->
+                {% if error %}
+                <div class="mb-5 rounded-xl border border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+                    {{ error }}
+                </div>
+                {% endif %}
+
+                <!-- FORM -->
+                <form method="POST" action="/login" class="space-y-5">
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Tipo de usuario
+                        </label>
+
+                        <select
+                            name="tipo"
+                            required
+                            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                        >
+                            <option value="paciente">Paciente</option>
+                            <option value="staff">Staff</option>
+                        </select>
+
+                    </div>
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            DNI o Email
+                        </label>
+
+                        <input
+                            type="text"
+                            name="dni_email"
+                            required
+                            autocomplete="username"
+                            placeholder="Ingresá tu DNI o email"
+                            class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                        >
+
+                    </div>
+
+                    <div>
+
+                        <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
+                            Contraseña
+                        </label>
+
+                        <div class="relative">
+                            <input
+                                type="password"
+                                name="password"
+                                id="password"
+                                required
+                                autocomplete="current-password"
+                                placeholder="********"
+                                class="w-full rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-4 py-3 pr-12 text-sm text-slate-800 dark:text-slate-100 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-accent-500"
+                            >
+
+                            <button
+                                type="button"
+                                id="toggle-password"
+                                aria-label="Mostrar contraseña"
+                                aria-pressed="false"
+                                class="absolute inset-y-0 right-0 flex w-12 items-center justify-center rounded-r-xl text-slate-400 hover:text-slate-600 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-accent-500 dark:text-slate-500 dark:hover:text-slate-300"
+                            >
+                                <svg class="icon-eye-off h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M3 3l18 18"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M10.58 10.58A2 2 0 0012 14a2 2 0 001.42-.58"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M9.88 4.24A10.94 10.94 0 0112 4c5 0 9 4.5 10 8a13.05 13.05 0 01-3.16 4.75"/>
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M6.61 6.61A13.18 13.18 0 002 12c1 3.5 5 8 10 8a10.87 10.87 0 005.39-1.45"/>
+                                </svg>
+                                <svg class="icon-eye hidden h-5 w-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" aria-hidden="true">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+
+                    </div>
+
+                    <button
+                        type="submit"
+                        class="w-full rounded-xl bg-accent-600 hover:bg-accent-700 text-white py-3 font-semibold transition-colors shadow-lg shadow-accent-600/20"
+                    >
+                        Ingresar
+                    </button>
+
+                </form>
+
+                <!-- FOOTER -->
+                <div class="mt-6 text-center text-sm text-slate-500 dark:text-slate-400">
+
+                    ¿No tenés cuenta?
+
+                    <a
+                        href="/registro"
+                        class="text-accent-600 dark:text-accent-400 hover:underline"
+                    >
+                        Registrate
+                    </a>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const passwordInput = document.getElementById('password');
+        const toggleButton = document.getElementById('toggle-password');
+        if (!passwordInput || !toggleButton) return;
+
+        const eyeIcon = toggleButton.querySelector('.icon-eye');
+        const eyeOffIcon = toggleButton.querySelector('.icon-eye-off');
+
+        toggleButton.addEventListener('click', function() {
+            const isHidden = passwordInput.type === 'password';
+            passwordInput.type = isHidden ? 'text' : 'password';
+            toggleButton.setAttribute('aria-label', isHidden ? 'Ocultar contraseña' : 'Mostrar contraseña');
+            toggleButton.setAttribute('aria-pressed', String(isHidden));
+            eyeIcon.classList.toggle('hidden', !isHidden);
+            eyeOffIcon.classList.toggle('hidden', isHidden);
+            passwordInput.focus();
+        });
+    });
+</script>
+{% endblock %}

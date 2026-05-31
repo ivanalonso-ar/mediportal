@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+
+{% block body %}
+<div class="flex h-screen overflow-hidden">
+
+    <!-- Sidebar desktop -->
+    <aside id="sidebar" class="hidden sm:flex w-56 flex-shrink-0 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex-col z-20">
+
+        <div class="h-14 px-4 flex items-center gap-3 border-b border-slate-200 dark:border-slate-800 flex-shrink-0">
+            <div class="w-7 h-7 rounded-lg bg-accent-600 flex items-center justify-center">
+                <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
+                </svg>
+            </div>
+            <div>
+                <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm block leading-tight">MediPortal</span>
+                <span class="text-[10px] text-slate-400 leading-tight block capitalize">{{ user.rol if user else 'Panel' }}</span>
+            </div>
+        </div>
+
+        <nav class="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto text-sm">
+            <p class="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1">General</p>
+
+            {% for href, label, page, path in [
+                ('/admin/', 'Dashboard', 'dashboard', 'M3 3h7v7H3zm11 0h7v7h-7zm0 11h7v7h-7zM3 14h7v7H3z'),
+                ('/admin/agenda', 'Agenda del día', 'agenda', 'M3 4h18v2H3zm0 7h18v2H3zm0 7h18v2H3z')
+            ] %}
+            <a href="{{ href }}" class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg font-medium transition-colors
+                {% if active_page == page %}bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ path }}"/></svg>
+                {{ label }}
+            </a>
+            {% endfor %}
+
+            <p class="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 mt-3">Gestión</p>
+
+            {% for href, label, page, path in [
+                ('/admin/pacientes', 'Pacientes', 'pacientes', 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8zM23 21v-2a4 4 0 00-3-3.87m-4-12a4 4 0 010 7.75'),
+                ('/admin/turnos', 'Turnos', 'turnos', 'M3 4h18v2H3zM3 11h18v2H3zM3 18h18v2H3z'),
+                ('/admin/resultados', 'Resultados', 'resultados', 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z')
+            ] %}
+            <a href="{{ href }}" class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg font-medium transition-colors
+                {% if active_page == page %}bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ path }}"/></svg>
+                {{ label }}
+            </a>
+            {% endfor %}
+
+            {% if is_admin %}
+            <p class="px-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider mb-1 mt-3">Admin</p>
+            {% for href, label, page, path in [
+                ('/admin/avisos', 'Avisos', 'avisos', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'),
+                ('/bonos/', 'Bonos', 'bonos', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'),
+                ('/admin/staff', 'Equipo / Staff', 'staff', 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z')
+            ] %}
+            <a href="{{ href }}" class="flex items-center gap-2.5 px-2.5 py-2 rounded-lg font-medium transition-colors
+                {% if active_page == page %}bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400{% else %}text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800{% endif %}">
+                <svg class="w-4 h-4 flex-shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ path }}"/></svg>
+                {{ label }}
+            </a>
+            {% endfor %}
+            {% endif %}
+        </nav>
+
+        <div class="border-t border-slate-200 dark:border-slate-800 p-3 flex-shrink-0">
+            <div class="flex items-center gap-2.5 px-1">
+                <div class="w-7 h-7 rounded-full bg-accent-100 dark:bg-accent-900/40 flex items-center justify-center flex-shrink-0">
+                    <span class="text-accent-700 dark:text-accent-400 text-[10px] font-bold">{{ user.nombre[0] }}{{ user.apellido[0] }}</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{{ user.nombre }} {{ user.apellido }}</p>
+                    <p class="text-[10px] text-slate-400 capitalize">{{ user.rol }}</p>
+                </div>
+                <a href="/logout" class="p-1 text-slate-400 hover:text-red-500 rounded-lg transition-colors" title="Salir">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+                    </svg>
+                </a>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+
+        <!-- Top bar -->
+        <header class="h-14 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-4 flex-shrink-0 gap-3">
+            <!-- Hamburger mobile -->
+            <div class="flex items-center gap-3">
+                <button class="sm:hidden p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800" onclick="toggleMobileMenu()">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+                    </svg>
+                </button>
+                <h1 class="text-sm font-semibold text-slate-800 dark:text-slate-100 truncate">{% block page_title %}{% endblock %}</h1>
+            </div>
+            <div class="flex items-center gap-1.5">
+                <button id="theme-toggle" onclick="toggleTheme()" class="p-1.5 rounded-lg text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <span class="icon-moon"><svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg></span>
+                    <span class="icon-sun" style="display:none"><svg class="w-4 h-4 text-amber-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/></svg></span>
+                </button>
+                <!-- Avatar mobile -->
+                <div class="sm:hidden w-7 h-7 rounded-full bg-accent-100 dark:bg-accent-900/40 flex items-center justify-center">
+                    <span class="text-accent-700 dark:text-accent-400 text-[10px] font-bold">{{ user.nombre[0] }}{{ user.apellido[0] }}</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Mobile menu drawer -->
+        <div id="mobile-overlay" class="hidden fixed inset-0 z-40 sm:hidden">
+            <div class="absolute inset-0 bg-black/40" onclick="toggleMobileMenu()"></div>
+            <aside class="absolute left-0 top-0 bottom-0 w-64 bg-white dark:bg-slate-900 flex flex-col shadow-2xl">
+                <div class="h-14 px-4 flex items-center justify-between border-b border-slate-200 dark:border-slate-800">
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-lg bg-accent-600 flex items-center justify-center">
+                            <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
+                        </div>
+                        <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm">MediPortal</span>
+                    </div>
+                    <button onclick="toggleMobileMenu()" class="p-1 text-slate-400">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                </div>
+                <nav class="flex-1 px-3 py-3 space-y-0.5 overflow-y-auto text-sm">
+                    {% for href, label, page, path in [
+                        ('/admin/', 'Dashboard', 'dashboard', 'M3 3h7v7H3zm11 0h7v7h-7zm0 11h7v7h-7zM3 14h7v7H3z'),
+                        ('/admin/agenda', 'Agenda del día', 'agenda', 'M3 4h18v2H3zm0 7h18v2H3zm0 7h18v2H3z'),
+                        ('/admin/pacientes', 'Pacientes', 'pacientes', 'M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2M9 7a4 4 0 100 8 4 4 0 000-8z'),
+                        ('/admin/turnos', 'Turnos', 'turnos', 'M3 4h18v2H3zM3 11h18v2H3zM3 18h18v2H3z'),
+                        ('/admin/resultados', 'Resultados', 'resultados', 'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z')
+                    ] %}
+                    <a href="{{ href }}" onclick="toggleMobileMenu()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors
+                        {% if active_page == page %}bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400{% else %}text-slate-600 dark:text-slate-400{% endif %}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ path }}"/></svg>
+                        {{ label }}
+                    </a>
+                    {% endfor %}
+                    {% if is_admin %}
+                    {% for href, label, page, path in [
+                        ('/admin/avisos', 'Avisos', 'avisos', 'M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9'),
+                        ('/bonos/', 'Bonos', 'bonos', 'M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2'),
+                        ('/admin/staff', 'Equipo / Staff', 'staff', 'M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z')
+                    ] %}
+                    <a href="{{ href }}" onclick="toggleMobileMenu()" class="flex items-center gap-3 px-3 py-2.5 rounded-lg font-medium transition-colors
+                        {% if active_page == page %}bg-accent-50 text-accent-700 dark:bg-accent-900/30 dark:text-accent-400{% else %}text-slate-600 dark:text-slate-400{% endif %}">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="{{ path }}"/></svg>
+                        {{ label }}
+                    </a>
+                    {% endfor %}
+                    {% endif %}
+                </nav>
+                <div class="border-t border-slate-200 dark:border-slate-800 p-3">
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center gap-2">
+                            <div class="w-7 h-7 rounded-full bg-accent-100 dark:bg-accent-900/40 flex items-center justify-center">
+                                <span class="text-accent-700 text-[10px] font-bold">{{ user.nombre[0] }}{{ user.apellido[0] }}</span>
+                            </div>
+                            <div>
+                                <p class="text-xs font-medium text-slate-700 dark:text-slate-300">{{ user.nombre }}</p>
+                                <p class="text-[10px] text-slate-400 capitalize">{{ user.rol }}</p>
+                            </div>
+                        </div>
+                        <a href="/logout" class="text-xs text-red-500 font-medium px-2 py-1 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20">Salir</a>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <!-- Content -->
+        <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950 p-4 sm:p-6">
+            {% block content %}{% endblock %}
+            <p class="mt-8 text-center text-xs text-slate-400">MediPortal &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
+        </main>
+    </div>
+</div>
+
+<script>
+function toggleMobileMenu() {
+    document.getElementById('mobile-overlay').classList.toggle('hidden');
+}
+</script>
+{% endblock %}
