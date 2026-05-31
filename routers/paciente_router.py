@@ -215,7 +215,6 @@ async def subir_informe(
     db.add(resultado)
     db.flush()
 
-<<<<<<< Updated upstream
     # Verificación con lock para serializar requests concurrentes en PostgreSQL
     if not hora_disponible(db, fecha, hora, especialidad,
                            profesional=profesional_nombre.strip() if profesional_nombre else "",
@@ -231,19 +230,11 @@ async def subir_informe(
         profesional=profesional_nombre.strip() if profesional_nombre else None,
         tipo_consulta=tipo_consulta,
         observaciones=observaciones, estado="confirmado"
-=======
-    crear_notificacion(
-        db, paciente_id,
-        titulo="Nuevo resultado disponible",
-        mensaje=f"Se cargó un nuevo resultado: {titulo.strip()}.",
-        tipo="resultado"
->>>>>>> Stashed changes
     )
     try:
         db.commit()
     except SQLAlchemyError:
         db.rollback()
-<<<<<<< Updated upstream
         logger.exception("Error de base de datos al solicitar turno.")
         return RedirectResponse(url=f"/paciente/turnos?msg=Ese+horario+ya+fue+tomado.+Elegi+otro.&tipo=error&para={destino_id}", status_code=302)
     return RedirectResponse(
@@ -693,9 +684,3 @@ async def eliminar_notificacion(request: Request, notif_id: int, db: Session = D
         db.delete(n)
         db.commit()
     return RedirectResponse(url="/paciente/notificaciones", status_code=302)
-=======
-        logger.exception("Error de base de datos al subir informe.")
-        return RedirectResponse(url="/profesional/informes?msg=No+se+pudo+cargar+el+informe.&tipo_msg=error", status_code=302)
-
-    return RedirectResponse(url="/profesional/informes?msg=Informe+cargado+correctamente.&tipo_msg=success", status_code=302)
->>>>>>> Stashed changes
