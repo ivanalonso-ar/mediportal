@@ -22,7 +22,7 @@ from routers import bonos_router
 
 models.Base.metadata.create_all(bind=engine)
 
-# Rate limiter (fix 3)
+# Rate limiter
 limiter = Limiter(key_func=get_remote_address, default_limits=["200/minute"])
 
 app = FastAPI(title="MediPortal", version="1.0.0")
@@ -40,6 +40,10 @@ async def add_global_context(request: Request, call_next):
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():
     return FileResponse("static/favicon.svg", media_type="image/svg+xml")
+
+@app.get("/ping", include_in_schema=False)
+async def ping():
+    return {"status": "ok"}
 
 app.include_router(auth_router.router)
 app.include_router(paciente_router.router)
