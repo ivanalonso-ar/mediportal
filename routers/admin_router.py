@@ -46,6 +46,18 @@ def staff_nombre(user: dict) -> str:
     return f"{user.get('nombre', '')} {user.get('apellido', '')}".strip()
 
 
+def nombre_publico_staff(user: dict, db) -> str:
+    from horarios import catalogo_horarios
+    nombre = user.get("nombre", "")
+    apellido = user.get("apellido", "")
+    catalogo = catalogo_horarios(db)
+    for profs in catalogo["profesionales"].values():
+        for p in profs:
+            if p.get("nombre_staff") == nombre and p.get("apellido_staff") == apellido:
+                return p["nombre"]
+    return f"{nombre} {apellido}".strip()
+
+
 def log_turno(db: Session, turno_id: int, accion: str, descripcion: str, realizado_por: str):
     entry = TurnoLog(
         turno_id=turno_id,
@@ -349,6 +361,8 @@ async def agenda_page(request: Request, db: Session = Depends(get_db)):
 
     fecha_str = request.query_params.get("fecha", datetime.date.today().strftime("%Y-%m-%d"))
     filtro_prof = request.query_params.get("profesional", "")
+    if user.get("rol") == "profesional" and not filtro_prof:
+        filtro_prof = nombre_publico_staff(user, db)
 
     query = db.query(Turno).filter(
         Turno.fecha == fecha_str,
@@ -596,7 +610,7 @@ async def resultados_page(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    mi_nombre = staff_nombre(user)
+    mi_nombre = nombre_publico_staff(user, db)
     rol = user.get("rol", "")
 
     # Profesionales ven solo sus pacientes; admin/recepcion ven todos
