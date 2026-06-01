@@ -70,7 +70,10 @@ app.mount("/static", StaticFiles(directory="static"), name="static")
 @app.middleware("http")
 async def add_global_context(request: Request, call_next):
     request.state.year = datetime.date.today().year
-    return await call_next(request)
+    response = await call_next(request)
+    if request.url.path.startswith("/static/"):
+        response.headers.setdefault("Cache-Control", "public, max-age=604800, immutable")
+    return response
 
 @app.get("/favicon.ico", include_in_schema=False)
 async def favicon():

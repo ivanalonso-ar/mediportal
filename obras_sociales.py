@@ -43,14 +43,25 @@ DEFAULT_OBRAS_SOCIALES = sorted(set([
 
 OBRAS_SOCIALES = [o for o in DEFAULT_OBRAS_SOCIALES if o.strip()]
 
+_CACHE_OBRAS: dict = {"expires": 0.0, "nombres": None}
+_OBRAS_TTL_SEG = 600
+
 
 def listar_obras_sociales(db=None) -> list[str]:
     if db is None:
         return OBRAS_SOCIALES
+    import time
+
+    ahora = time.monotonic()
+    if _CACHE_OBRAS["nombres"] is not None and ahora < _CACHE_OBRAS["expires"]:
+        return _CACHE_OBRAS["nombres"]
     try:
         from models import ObraSocial
 
         rows = db.query(ObraSocial).filter(ObraSocial.activa == True).order_by(ObraSocial.nombre.asc()).all()
-        return [r.nombre for r in rows] or OBRAS_SOCIALES
+        nombres = [r.nombre for r in rows] or OBRAS_SOCIALES
+        _CACHE_OBRAS["nombres"] = nombres
+        _CACHE_OBRAS["expires"] = ahora + _OBRAS_TTL_SEG
+        return nombres
     except Exception:
         return OBRAS_SOCIALES

@@ -227,8 +227,7 @@
                 <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Especialidad</label>
                 <select name="especialidad" id="sel-especialidad" required onchange="onEspecialidadChange()"
                     class="w-full px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
-                    <option value="">— Seleccioná una especialidad —</option>
-                    {% for e in especialidades %}<option value="{{ e }}">{{ e }}</option>{% endfor %}
+                    <option value="">— Cargando especialidades… —</option>
                 </select>
             </div>
 
@@ -276,9 +275,37 @@
 </div>
 
 <script>
-const PROFESIONALES_JSON = {{ profesionales_json | tojson }};
-const SLOTS_MANANA = [{{ slots_manana | map('tojson') | join(', ') }}];
-const SLOTS_TARDE = [{{ slots_tarde | map('tojson') | join(', ') }}];
+let PROFESIONALES_JSON = {};
+let SLOTS_MANANA = [];
+let SLOTS_TARDE = [];
+let catalogoCargado = false;
+let catalogoCargando = null;
+
+async function cargarCatalogoTurnos() {
+    if (catalogoCargado) return;
+    if (catalogoCargando) return catalogoCargando;
+    catalogoCargando = fetch('/paciente/turnos/catalogo')
+        .then(r => r.json())
+        .then(data => {
+            if (!data.ok) throw new Error('catalogo');
+            PROFESIONALES_JSON = data.profesionales_json || {};
+            SLOTS_MANANA = data.slots_manana || [];
+            SLOTS_TARDE = data.slots_tarde || [];
+            const sel = document.getElementById('sel-especialidad');
+            if (sel) {
+                sel.innerHTML = '<option value="">— Seleccioná una especialidad —</option>';
+                (data.especialidades || []).forEach(e => {
+                    const opt = document.createElement('option');
+                    opt.value = e;
+                    opt.textContent = e;
+                    sel.appendChild(opt);
+                });
+            }
+            catalogoCargado = true;
+        })
+        .finally(() => { catalogoCargando = null; });
+    return catalogoCargando;
+}
 
 function onEspecialidadChange() {
     const esp = document.getElementById('sel-especialidad').value;
@@ -353,10 +380,12 @@ function onTipoChange() {
 
 {% block extra_scripts %}
 <script>
-function toggleModal(id) {
+async function toggleModal(id) {
     const el = document.getElementById(id);
+    const abriendo = el.classList.contains('hidden');
     el.classList.toggle('hidden');
-    if (id === 'modal-nuevo-turno' && !el.classList.contains('hidden')) {
+    if (id === 'modal-nuevo-turno' && abriendo) {
+        await cargarCatalogoTurnos();
         refreshDisponibilidad();
     }
 }

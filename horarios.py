@@ -181,15 +181,9 @@ def catalogo_horarios(db=None) -> dict:
     slots_manana = _slots(cfg.hora_inicio_manana, cfg.hora_fin_manana, intervalo) if cfg else DEFAULT_SLOTS_MANANA
     slots_tarde = _slots(cfg.hora_inicio_tarde, cfg.hora_fin_tarde, intervalo) if cfg else DEFAULT_SLOTS_TARDE
     turno_por_especialidad = _turno_por_especialidad(profesionales)
+    # Sin slots embebidos: se envían una sola vez como slots_manana/slots_tarde (evita HTML/JSON enorme).
     profesionales_payload = {
-        esp: [
-            {
-                "nombre": p["nombre"],
-                "turno": p["turno"],
-                "slots": slots_manana if p["turno"] == "manana" else slots_tarde,
-            }
-            for p in profs
-        ]
+        esp: [{"nombre": p["nombre"], "turno": p["turno"]} for p in profs]
         for esp, profs in profesionales.items()
     }
     payload = {

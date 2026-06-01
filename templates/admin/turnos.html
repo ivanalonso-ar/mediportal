@@ -196,6 +196,8 @@
 {% block extra_scripts %}
 <script>
 const PROF_DATA = {{ profesionales_json | tojson }};
+const SLOTS_MANANA = {{ slots_manana | tojson }};
+const SLOTS_TARDE = {{ slots_tarde | tojson }};
 
 function toggleModal(id) { document.getElementById(id).classList.toggle('hidden'); }
 
@@ -234,7 +236,8 @@ function adminOnProf(sel, prefix) {
     const prof = profs.find(p => p.nombre === profNombre);
     if (!prof) return;
 
-    prof.slots.forEach(s => {
+    const slots = prof.turno === 'manana' ? SLOTS_MANANA : SLOTS_TARDE;
+    slots.forEach(s => {
         const opt = document.createElement('option');
         opt.value = s;
         opt.textContent = s + ' hs';

@@ -41,6 +41,15 @@ def _notif_count(db, paciente_id):
     ).count()
 
 
+def _miembros_grupo(db, titular_id: int) -> list[tuple]:
+    rels = db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == titular_id).all()
+    ids = [r.miembro_id for r in rels]
+    if not ids:
+        return []
+    por_id = {p.id: p for p in db.query(Paciente).filter(Paciente.id.in_(ids)).all()}
+    return [(rel, por_id.get(rel.miembro_id)) for rel in rels]
+
+
 # ─── Turnos ───────────────────────────────────────────────────────────────────
 
 @router.get("/turnos", response_class=HTMLResponse)
@@ -65,18 +74,20 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
     paciente_sel_id = int(request.query_params.get("para", pid))
     if paciente_sel_id not in todos_ids:
         paciente_sel_id = pid
-    paciente_sel = db.query(Paciente).filter(Paciente.id == paciente_sel_id).first()
+    paciente_sel = paciente if paciente_sel_id == pid else (
+        db.query(Paciente).filter(Paciente.id == paciente_sel_id).first()
+    )
 
     turnos = (
         db.query(Turno)
         .options(joinedload(Turno.paciente))
         .filter(Turno.paciente_id == paciente_sel_id)
         .order_by(Turno.fecha.desc(), Turno.hora.desc())
+        .limit(200)
         .all()
     )
 
-    avisos = db.query(Aviso).filter(Aviso.activo == True).order_by(Aviso.orden.asc()).all()
-    catalogo = catalogo_horarios(db)
+    avisos = db.query(Aviso).filter(Aviso.activo == True).order_by(Aviso.orden.asc()).limit(10).all()
 
     return templates.TemplateResponse("paciente/turnos.html", {
         "request": request, "user": user,
@@ -85,14 +96,25 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
         "paciente_sel": paciente_sel,
         "miembros": miembros,
         "turnos": turnos,
-        "especialidades": catalogo["especialidades"],
-        "turno_por_especialidad": catalogo["turno_por_especialidad"],
-        "slots_manana": catalogo["slots_manana"],
-        "slots_tarde": catalogo["slots_tarde"],
-        "profesionales_json": catalogo["profesionales_json"],
         "avisos": avisos,
         "msg": request.query_params.get("msg", ""),
         "msg_tipo": request.query_params.get("tipo", ""),
+    })
+
+
+@router.get("/turnos/catalogo")
+async def turnos_catalogo(request: Request, db: Session = Depends(get_db)):
+    """Catálogo para el modal de solicitud (carga diferida, JSON liviano)."""
+    user = require_paciente(request)
+    if not user:
+        return JSONResponse({"ok": False, "error": "unauthorized"}, status_code=401)
+    catalogo = catalogo_horarios(db)
+    return JSONResponse({
+        "ok": True,
+        "especialidades": catalogo["especialidades"],
+        "profesionales_json": catalogo["profesionales_json"],
+        "slots_manana": catalogo["slots_manana"],
+        "slots_tarde": catalogo["slots_tarde"],
     })
 
 
@@ -366,8 +388,7 @@ async def perfil_page(request: Request, db: Session = Depends(get_db)):
     pid = int(user["sub"])
     paciente = db.query(Paciente).filter(Paciente.id == pid).first()
 
-    miembros_rel = db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == pid).all()
-    miembros = [(rel, db.query(Paciente).filter(Paciente.id == rel.miembro_id).first()) for rel in miembros_rel]
+    miembros = _miembros_grupo(db, pid)
 
     solicitudes_recibidas = db.query(SolicitudGrupo).filter(
         SolicitudGrupo.destinatario_id == pid,
@@ -451,8 +472,7 @@ async def perfil_cambiar_password(
 
     def error(msg):
         pid = int(user["sub"])
-        miembros_rel = db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == pid).all()
-        miembros = [(rel, db.query(Paciente).filter(Paciente.id == rel.miembro_id).first()) for rel in miembros_rel]
+        miembros = _miembros_grupo(db, pid)
         solicitudes_recibidas = db.query(SolicitudGrupo).filter(
             SolicitudGrupo.destinatario_id == pid, SolicitudGrupo.estado == "pendiente"
         ).all()
