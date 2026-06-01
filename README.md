@@ -131,7 +131,7 @@ Deploy como **Web Service** en Render:
 
 Variables de entorno: `DATABASE_URL`, `SECRET_KEY`, `APP_URL` (URL pública de Render), y opcionalmente `SUPABASE_URL` / `SUPABASE_KEY` para Storage.
 
-**Rendimiento DB:** en Supabase usá el **session pooler** (puerto `5432`) en `DATABASE_URL` para reutilizar conexiones. El puerto `6543` (transaction) fuerza una conexión nueva por request y suele sumar varios segundos por clic.
+**Rendimiento DB:** con el **transaction pooler** (puerto `6543`, habitual en Render) cada clic abre una conexión a Supabase; la app usa **Turbo Frame** para no recargar CSS/JS en cada navegación y reduce consultas por página.
 
 Recomendaciones:
 - PostgreSQL/Supabase (migraciones en `migrations/`)

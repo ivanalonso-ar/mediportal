@@ -5,6 +5,7 @@ import mimetypes
 import logging
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
+from sqlalchemy import func, select
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
@@ -34,11 +35,22 @@ def require_paciente(request: Request):
     return user
 
 
-def _notif_count(db, paciente_id):
-    return db.query(Notificacion).filter(
-        Notificacion.paciente_id == paciente_id,
-        Notificacion.leido == False
-    ).count()
+def _notif_count(db, paciente_id: int) -> int:
+    return int(
+        db.scalar(
+            select(func.count()).select_from(Notificacion).where(
+                Notificacion.paciente_id == paciente_id,
+                Notificacion.leido == False,
+            )
+        )
+        or 0
+    )
+
+
+def _paciente_base(db, paciente_id: int) -> tuple[Paciente | None, int]:
+    """Paciente + contador de notificaciones en el mínimo de round-trips posible."""
+    paciente = db.get(Paciente, paciente_id)
+    return paciente, _notif_count(db, paciente_id)
 
 
 def _miembros_grupo(db, titular_id: int) -> list[tuple]:
@@ -59,11 +71,13 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=302)
 
     pid = int(user["sub"])
-    paciente = db.query(Paciente).filter(Paciente.id == pid).first()
+    paciente, notif_no_leidas = _paciente_base(db, pid)
 
-    # IDs propios + miembros del grupo
-    miembros_rel = db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == pid).all()
-    miembro_ids = [m.miembro_id for m in miembros_rel]
+    miembro_ids = [
+        mid for (mid,) in db.query(GrupoFamiliar.miembro_id).filter(
+            GrupoFamiliar.titular_id == pid
+        ).all()
+    ]
     todos_ids = [pid] + miembro_ids
     miembros = (
         db.query(Paciente).filter(Paciente.id.in_(miembro_ids)).all()
@@ -91,7 +105,7 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("paciente/turnos.html", {
         "request": request, "user": user,
-        "notif_no_leidas": _notif_count(db, pid),
+        "notif_no_leidas": notif_no_leidas,
         "paciente": paciente,
         "paciente_sel": paciente_sel,
         "miembros": miembros,
@@ -257,9 +271,11 @@ async def resultados_page(request: Request, db: Session = Depends(get_db)):
         Resultado.paciente_id == para
     ).order_by(Resultado.created_at.desc()).all()
 
+    _, notif_no_leidas = _paciente_base(db, pid)
+
     return templates.TemplateResponse("paciente/resultados.html", {
         "request": request, "user": user,
-        "notif_no_leidas": _notif_count(db, pid),
+        "notif_no_leidas": notif_no_leidas,
         "resultados": resultados,
         "miembros": miembros,
         "paciente_sel": pac_sel,
@@ -386,10 +402,8 @@ async def perfil_page(request: Request, db: Session = Depends(get_db)):
         return RedirectResponse(url="/login", status_code=302)
 
     pid = int(user["sub"])
-    paciente = db.query(Paciente).filter(Paciente.id == pid).first()
-
+    paciente, notif_no_leidas = _paciente_base(db, pid)
     miembros = _miembros_grupo(db, pid)
-
     solicitudes_recibidas = db.query(SolicitudGrupo).filter(
         SolicitudGrupo.destinatario_id == pid,
         SolicitudGrupo.estado == "pendiente"
@@ -397,7 +411,7 @@ async def perfil_page(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("paciente/perfil.html", {
         "request": request, "user": user,
-        "notif_no_leidas": _notif_count(db, pid),
+        "notif_no_leidas": notif_no_leidas,
         "paciente": paciente,
         "obras_sociales": listar_obras_sociales(db),
         "miembros": miembros,
