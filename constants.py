@@ -6,5 +6,5 @@ UPLOAD_DIR = os.getenv("UPLOAD_DIR", "uploads/resultados")
 ALLOWED_EXTENSIONS = {
     ".pdf", ".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp",
     ".tiff", ".tif", ".doc", ".docx", ".xls", ".xlsx", ".txt",
-    ".zip", ".rar", ".dcm",
+    ".zip", ".rar", ".dcm", ".mp4", ".avi", ".mov",
 }

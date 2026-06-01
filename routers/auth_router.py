@@ -45,8 +45,6 @@ async def login_post(
     password: str = Form(...),
     db: Session = Depends(get_db)
 ):
-    print(f"=== LOGIN HIT === tipo={tipo} input={dni_email}")
-
     if tipo == "paciente":
         paciente = db.query(Paciente).filter(
             or_(
@@ -84,7 +82,6 @@ async def login_post(
             UsuarioStaff.email == dni_email.strip().lower(),
             UsuarioStaff.activo == True
         ).first()
-        print(f"=== STAFF QUERY === found={staff is not None} pwd_ok={verify_password(password, staff.password_hash) if staff else 'N/A'}")
         if not staff or not verify_password(password, staff.password_hash):
             return templates.TemplateResponse("login.html", {
                 "request": request,

@@ -11,8 +11,8 @@ from database import get_db
 from models import Paciente, UsuarioStaff, Turno, TurnoLog, Resultado, Aviso
 from obras_sociales import listar_obras_sociales
 from notif_utils import crear_notificacion
-from horarios import catalogo_horarios
-from disponibilidad import hora_disponible
+from horarios import catalogo_horarios, resolver_profesional_id
+from disponibilidad import hora_disponible, expirar_turnos_ausentes
 from auth import get_current_user, get_password_hash
 from mail import mail_bienvenida, mail_turno_confirmado, mail_turno_cancelado, mail_resultado_disponible, mail_registro_aprobado, mail_registro_rechazado
 from storage import subir_archivo, leer_archivo, eliminar_archivo
@@ -359,6 +359,8 @@ async def agenda_page(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
+    expirar_turnos_ausentes(db)
+
     fecha_str = request.query_params.get("fecha", datetime.date.today().strftime("%Y-%m-%d"))
     filtro_prof = request.query_params.get("profesional", "")
     if user.get("rol") == "profesional" and not filtro_prof:
@@ -429,9 +431,11 @@ async def nuevo_turno(
         )
 
     nombre_staff = staff_nombre(user)
+    prof_nombre = profesional.strip()
     turno = Turno(
         paciente_id=paciente_id, fecha=fecha, hora=hora,
-        especialidad=especialidad, profesional=profesional.strip(),
+        especialidad=especialidad, profesional=prof_nombre,
+        profesional_id=resolver_profesional_id(db, especialidad, prof_nombre),
         observaciones=observaciones.strip(),
         estado="confirmado", tipo=tipo, tipo_consulta=tipo_consulta,
         created_by=nombre_staff,
@@ -494,10 +498,12 @@ async def modificar_turno(
     if turno.tipo != tipo:
         cambios.append(f"tipo {turno.tipo}→{tipo}")
 
+    prof_nombre = profesional.strip()
     turno.fecha = fecha
     turno.hora = hora
     turno.especialidad = especialidad
-    turno.profesional = profesional.strip()
+    turno.profesional = prof_nombre
+    turno.profesional_id = resolver_profesional_id(db, especialidad, prof_nombre)
     turno.tipo = tipo if tipo in ("normal", "sobreturno") else "normal"
     turno.tipo_consulta = tipo_consulta if tipo_consulta in ("obra_social", "particular") else "obra_social"
     turno.observaciones = observaciones.strip()
@@ -644,12 +650,16 @@ async def resultados_page(request: Request, db: Session = Depends(get_db)):
         resultados = db.query(Resultado).order_by(Resultado.created_at.desc()).all()
 
     # Turnos por paciente para selector de turno en el modal
-    turnos_por_paciente = {}
-    for p in pacientes:
-        turnos_por_paciente[p.id] = db.query(Turno).filter(
-            Turno.paciente_id == p.id,
+    paciente_ids_visibles = [p.id for p in pacientes]
+    turnos_por_paciente = {pid: [] for pid in paciente_ids_visibles}
+    if paciente_ids_visibles:
+        turnos = db.query(Turno).filter(
+            Turno.paciente_id.in_(paciente_ids_visibles),
             Turno.estado.notin_(["cancelado"])
-        ).order_by(Turno.fecha.desc()).limit(20).all()
+        ).order_by(Turno.paciente_id.asc(), Turno.fecha.desc()).all()
+        for turno in turnos:
+            if len(turnos_por_paciente[turno.paciente_id]) < 20:
+                turnos_por_paciente[turno.paciente_id].append(turno)
 
     return templates.TemplateResponse("admin/resultados.html", {
         "request": request, "user": user,
@@ -694,11 +704,13 @@ async def subir_resultado(
             logger.exception("Error al subir archivo de resultado.")
             return RedirectResponse(url="/admin/resultados?msg=No+se+pudo+guardar+el+archivo.&tipo=error", status_code=302)
 
+    staff_id = int(user["sub"]) if user.get("sub") else None
     resultado = Resultado(
         paciente_id=paciente_id, titulo=titulo.strip(),
         descripcion=descripcion.strip(), archivo_nombre=file_name,
         archivo_path=file_path, fecha_estudio=fecha_estudio,
         subido_por=staff_nombre(user),
+        subido_por_id=staff_id,
     )
     db.add(resultado)
     db.flush()

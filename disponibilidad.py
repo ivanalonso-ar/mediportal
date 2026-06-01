@@ -1,9 +1,52 @@
+import datetime
+
 from sqlalchemy.orm import Session
 
 from models import Turno
 from horarios import catalogo_horarios
 
 ESTADOS_ACTIVOS = ("pendiente", "confirmado")
+HORAS_GRACIA_AUSENTE = 24
+
+
+def turno_a_datetime(fecha: str, hora: str) -> datetime.datetime | None:
+    """Convierte fecha (YYYY-MM-DD) y hora (HH:MM) a datetime local."""
+    if not fecha or not hora:
+        return None
+    hora_norm = hora.strip()
+    if len(hora_norm) == 4 and ":" not in hora_norm:
+        hora_norm = f"{hora_norm[:2]}:{hora_norm[2:]}"
+    for fmt in ("%Y-%m-%d %H:%M", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.datetime.strptime(f"{fecha.strip()} {hora_norm}", fmt)
+        except ValueError:
+            continue
+    return None
+
+
+def debe_marcarse_ausente(turno: Turno, ahora: datetime.datetime | None = None) -> bool:
+    """True si pasaron 24h desde fecha+hora del turno y sigue pendiente/confirmado."""
+    if turno.estado not in ESTADOS_ACTIVOS:
+        return False
+    inicio = turno_a_datetime(turno.fecha, turno.hora)
+    if not inicio:
+        return False
+    ahora = ahora or datetime.datetime.now()
+    return ahora >= inicio + datetime.timedelta(hours=HORAS_GRACIA_AUSENTE)
+
+
+def expirar_turnos_ausentes(db: Session) -> list[int]:
+    """Marca como ausente turnos activos con más de 24h desde el horario programado."""
+    ahora = datetime.datetime.now()
+    activos = db.query(Turno).filter(Turno.estado.in_(ESTADOS_ACTIVOS)).all()
+    marcados = []
+    for turno in activos:
+        if debe_marcarse_ausente(turno, ahora):
+            turno.estado = "ausente"
+            marcados.append(turno.id)
+    if marcados:
+        db.commit()
+    return marcados
 
 
 def capacidad_especialidad(especialidad: str, db: Session | None = None) -> int:

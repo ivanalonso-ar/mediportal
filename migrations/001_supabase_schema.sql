@@ -95,7 +95,7 @@ create table if not exists turnos (
     observaciones text,
     created_at timestamp with time zone not null default now(),
     created_by varchar(100),
-    constraint turnos_estado_chk check (estado in ('pendiente', 'confirmado', 'cancelado', 'completado')),
+    constraint turnos_estado_chk check (estado in ('pendiente', 'confirmado', 'cancelado', 'completado', 'ausente')),
     constraint turnos_tipo_chk check (tipo in ('normal', 'sobreturno')),
     constraint turnos_tipo_consulta_chk check (tipo_consulta in ('obra_social', 'particular'))
 );
@@ -223,8 +223,4 @@ alter table turnos drop constraint if exists uq_turno_paciente;
 alter table turnos add constraint uq_turno_paciente unique (paciente_id, fecha, hora, especialidad);
 
 -- Fix 7: cascades en notificaciones (ya correcto si se creó con el schema inicial)
--- Fix 11: índice bonos
-create index if not exists idx_bonos_fecha_esp on bonos(fecha, especialidad);
-
--- Fix 13: UPLOAD_DIR centralizado — sin cambio de schema, es a nivel código
 

@@ -19,7 +19,7 @@ templates.env.filters["fecha_corta_es"] = fecha_corta_es
 
 from database import engine, SessionLocal
 import models
-from models import Turno
+from disponibilidad import expirar_turnos_ausentes
 from routers import auth_router, paciente_router, admin_router, profesional_router
 from routers import bonos_router
 
@@ -27,45 +27,18 @@ models.Base.metadata.create_all(bind=engine)
 
 logger = logging.getLogger(__name__)
 
-ESTADOS_ACTIVOS = ("pendiente", "confirmado")
 INTERVALO_EXPIRACION_HORAS = 1  # cada cuánto corre el job
 
 
 async def _expirar_turnos_vencidos():
-    """Marca como 'ausente' los turnos cuya fecha+hora ya pasó y siguen activos."""
+    """Marca como ausente turnos activos 24h después de fecha+hora si no se atendieron."""
     while True:
         try:
-            ahora = datetime.datetime.now()
-            fecha_hoy = ahora.strftime("%Y-%m-%d")
-            hora_ahora = ahora.strftime("%H:%M")
             db = SessionLocal()
             try:
-                # Turnos de días anteriores con estado activo
-                vencidos_dias_anteriores = (
-                    db.query(Turno)
-                    .filter(
-                        Turno.estado.in_(ESTADOS_ACTIVOS),
-                        Turno.fecha < fecha_hoy,
-                    )
-                    .all()
-                )
-                # Turnos de hoy cuya hora ya pasó
-                vencidos_hoy = (
-                    db.query(Turno)
-                    .filter(
-                        Turno.estado.in_(ESTADOS_ACTIVOS),
-                        Turno.fecha == fecha_hoy,
-                        Turno.hora < hora_ahora,
-                    )
-                    .all()
-                )
-                todos = vencidos_dias_anteriores + vencidos_hoy
-                if todos:
-                    ids = [t.id for t in todos]
-                    for turno in todos:
-                        turno.estado = "ausente"
-                    db.commit()
-                    logger.info(f"[expirar_turnos] {len(todos)} turno(s) marcado(s) como ausente: IDs {ids}")
+                ids = expirar_turnos_ausentes(db)
+                if ids:
+                    logger.info(f"[expirar_turnos] {len(ids)} turno(s) marcado(s) como ausente: IDs {ids}")
             finally:
                 db.close()
         except Exception:

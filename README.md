@@ -121,14 +121,18 @@ mediportal/
 
 ---
 
-# Producción
+# Producción (Render)
+
+Deploy como **Web Service** en Render:
+
+- **Build:** `pip install -r requirements.txt`
+- **Start:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
+
+Variables de entorno: `DATABASE_URL`, `SECRET_KEY`, `APP_URL` (URL pública de Render), y opcionalmente `SUPABASE_URL` / `SUPABASE_KEY` para Storage.
 
 Recomendaciones:
-- PostgreSQL/Supabase
-- HTTPS
+- PostgreSQL/Supabase (migraciones en `migrations/`)
+- HTTPS (Render lo provee)
 - SECRET_KEY única por cliente
-- Storage persistente para PDFs
-- Backups automáticos
-
-Actualmente los PDFs se almacenan localmente.
-Para producción se recomienda Supabase Storage.
+- Supabase Storage para PDFs/informes (el disco local en Render no es persistente)
+- Backups automáticos en Supabase

@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from database import get_db
 from models import Paciente, Turno, Resultado, Aviso, Notificacion, GrupoFamiliar, SolicitudGrupo
 from obras_sociales import listar_obras_sociales
-from horarios import catalogo_horarios
+from horarios import catalogo_horarios, resolver_profesional_id
 from disponibilidad import hora_disponible, horas_sin_disponibilidad
 from notif_utils import crear_notificacion
 from auth import get_current_user, verify_password, get_password_hash, create_access_token, set_auth_cookie
@@ -140,10 +140,12 @@ async def solicitar_turno(
             status_code=302
         )
 
+    prof_nombre = profesional_nombre.strip() if profesional_nombre else ""
     turno = Turno(
         paciente_id=destino_id,
         fecha=fecha, hora=hora, especialidad=especialidad,
-        profesional=profesional_nombre.strip() if profesional_nombre else None,
+        profesional=prof_nombre or None,
+        profesional_id=resolver_profesional_id(db, especialidad, prof_nombre) if prof_nombre else None,
         tipo_consulta=tipo_consulta,
         observaciones=observaciones, estado="confirmado"
     )

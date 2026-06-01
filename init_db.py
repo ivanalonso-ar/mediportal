@@ -34,6 +34,14 @@ MIGRATIONS_DIR = ROOT / "migrations"
 def run_migrations() -> None:
     if engine.dialect.name == "sqlite":
         Base.metadata.create_all(bind=engine)
+        with engine.begin() as conn:
+            turnos_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(turnos)").all()}
+            if "profesional_id" not in turnos_cols:
+                conn.exec_driver_sql("ALTER TABLE turnos ADD COLUMN profesional_id INTEGER")
+
+            resultados_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(resultados)").all()}
+            if "subido_por_id" not in resultados_cols:
+                conn.exec_driver_sql("ALTER TABLE resultados ADD COLUMN subido_por_id INTEGER")
         print("OK schema SQLite local creado via SQLAlchemy")
         return
 

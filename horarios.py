@@ -119,16 +119,24 @@ def catalogo_horarios(db=None) -> dict:
 
             cfg = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.activo == True).first()
             especialidades = db.query(Especialidad).filter(Especialidad.activa == True).order_by(Especialidad.orden.asc(), Especialidad.nombre.asc()).all()
-            profesionales = {}
-            for esp in especialidades:
+            profesionales = {esp.nombre: [] for esp in especialidades}
+            especialidad_por_id = {esp.id: esp.nombre for esp in especialidades}
+            if especialidad_por_id:
                 rows = db.query(ProfesionalEspecialidad).filter(
-                    ProfesionalEspecialidad.especialidad_id == esp.id,
+                    ProfesionalEspecialidad.especialidad_id.in_(especialidad_por_id.keys()),
                     ProfesionalEspecialidad.activo == True,
-                ).order_by(ProfesionalEspecialidad.nombre_publico.asc()).all()
-                profesionales[esp.nombre] = [
-                    {"nombre": r.nombre_publico, "turno": r.turno}
-                    for r in rows
-                ]
+                ).order_by(ProfesionalEspecialidad.especialidad_id.asc(), ProfesionalEspecialidad.nombre_publico.asc()).all()
+                for row in rows:
+                    nombre_esp = especialidad_por_id.get(row.especialidad_id)
+                    if nombre_esp:
+                        staff = row.profesional
+                        profesionales[nombre_esp].append({
+                            "nombre": row.nombre_publico,
+                            "turno": row.turno,
+                            "nombre_staff": staff.nombre if staff else "",
+                            "apellido_staff": staff.apellido if staff else "",
+                            "profesional_id": row.profesional_id,
+                        })
             if not profesionales:
                 profesionales = DEFAULT_PROFESIONALES
         except Exception:
@@ -176,3 +184,24 @@ def slots_para_profesional(especialidad, nombre_profesional, db=None):
 
 def profesionales_json(db=None):
     return catalogo_horarios(db)["profesionales_json"]
+
+
+def resolver_profesional_id(db, especialidad: str, nombre_publico: str) -> int | None:
+    """Resuelve el ID de staff a partir del nombre público y la especialidad."""
+    nombre = (nombre_publico or "").strip()
+    if not nombre or db is None:
+        return None
+    try:
+        from models import Especialidad, ProfesionalEspecialidad
+
+        esp = db.query(Epecialidad).filter(Especialidad.nombre == especialidad.strip()).first()
+        if not esp:
+            return None
+        rel = db.query(ProfesionalEspecialidad).filter(
+            ProfesionalEspecialidad.especialidad_id == esp.id,
+            ProfesionalEspecialidad.nombre_publico == nombre,
+            ProfesionalEspecialidad.activo == True,
+        ).first()
+        return rel.profesional_id if rel else None
+    except Exception:
+        return None
