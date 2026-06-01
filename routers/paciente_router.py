@@ -5,7 +5,7 @@ import mimetypes
 import logging
 from fastapi import APIRouter, Request, Form, Depends
 from fastapi.responses import HTMLResponse, RedirectResponse, FileResponse, JSONResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
@@ -56,7 +56,10 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
     miembros_rel = db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == pid).all()
     miembro_ids = [m.miembro_id for m in miembros_rel]
     todos_ids = [pid] + miembro_ids
-    miembros = [db.query(Paciente).filter(Paciente.id == mid).first() for mid in miembro_ids]
+    miembros = (
+        db.query(Paciente).filter(Paciente.id.in_(miembro_ids)).all()
+        if miembro_ids else []
+    )
 
     # Paciente seleccionado (para gestionar turno de familiar)
     paciente_sel_id = int(request.query_params.get("para", pid))
@@ -64,9 +67,13 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
         paciente_sel_id = pid
     paciente_sel = db.query(Paciente).filter(Paciente.id == paciente_sel_id).first()
 
-    turnos = db.query(Turno).filter(
-        Turno.paciente_id == paciente_sel_id
-    ).order_by(Turno.fecha.desc(), Turno.hora.desc()).all()
+    turnos = (
+        db.query(Turno)
+        .options(joinedload(Turno.paciente))
+        .filter(Turno.paciente_id == paciente_sel_id)
+        .order_by(Turno.fecha.desc(), Turno.hora.desc())
+        .all()
+    )
 
     avisos = db.query(Aviso).filter(Aviso.activo == True).order_by(Aviso.orden.asc()).all()
     catalogo = catalogo_horarios(db)

@@ -125,7 +125,8 @@ mediportal/
 
 Deploy como **Web Service** en Render:
 
-- **Build:** `pip install -r requirements.txt`
+- **Build:** `pip install -r requirements.txt`  
+  (Opcional si cambiás estilos: `npm ci && npm run build:css` — el CSS compilado va en `static/css/app.css`)
 - **Start:** `uvicorn main:app --host 0.0.0.0 --port $PORT`
 
 Variables de entorno: `DATABASE_URL`, `SECRET_KEY`, `APP_URL` (URL pública de Render), y opcionalmente `SUPABASE_URL` / `SUPABASE_KEY` para Storage.

@@ -5,6 +5,16 @@ Los defaults se usan solo como semilla/fallback. En runtime, los routers llaman 
 catalogo_horarios(db) para leer especialidades y profesionales desde PostgreSQL.
 """
 
+import time
+
+_CATALOGO_CACHE: dict = {"expires": 0.0, "payload": None}
+_CATALOGO_TTL_SEG = 300
+
+
+def invalidar_cache_catalogo() -> None:
+    _CATALOGO_CACHE["expires"] = 0.0
+    _CATALOGO_CACHE["payload"] = None
+
 
 def _slots(hora_inicio: str, hora_fin: str, intervalo_minutos: int = 20) -> list[str]:
     h_ini, m_ini = [int(x) for x in hora_inicio.split(":")]
@@ -109,36 +119,60 @@ SLOTS_MANANA = DEFAULT_SLOTS_MANANA
 SLOTS_TARDE = DEFAULT_SLOTS_TARDE
 
 
+def _catalogo_desde_db(db) -> tuple[dict, object | None]:
+    from sqlalchemy.orm import joinedload
+
+    from models import ConfiguracionClinica, Especialidad, ProfesionalEspecialidad
+
+    cfg = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.activo == True).first()
+    especialidades = (
+        db.query(Especialidad)
+        .filter(Especialidad.activa == True)
+        .order_by(Especialidad.orden.asc(), Especialidad.nombre.asc())
+        .all()
+    )
+    profesionales = {esp.nombre: [] for esp in especialidades}
+    especialidad_por_id = {esp.id: esp.nombre for esp in especialidades}
+    if especialidad_por_id:
+        rows = (
+            db.query(ProfesionalEspecialidad)
+            .options(joinedload(ProfesionalEspecialidad.profesional))
+            .filter(
+                ProfesionalEspecialidad.especialidad_id.in_(especialidad_por_id.keys()),
+                ProfesionalEspecialidad.activo == True,
+            )
+            .order_by(
+                ProfesionalEspecialidad.especialidad_id.asc(),
+                ProfesionalEspecialidad.nombre_publico.asc(),
+            )
+            .all()
+        )
+        for row in rows:
+            nombre_esp = especialidad_por_id.get(row.especialidad_id)
+            if nombre_esp:
+                staff = row.profesional
+                profesionales[nombre_esp].append({
+                    "nombre": row.nombre_publico,
+                    "turno": row.turno,
+                    "nombre_staff": staff.nombre if staff else "",
+                    "apellido_staff": staff.apellido if staff else "",
+                    "profesional_id": row.profesional_id,
+                })
+    if not profesionales:
+        profesionales = DEFAULT_PROFESIONALES
+    return profesionales, cfg
+
+
 def catalogo_horarios(db=None) -> dict:
     if db is None:
         profesionales = DEFAULT_PROFESIONALES
         cfg = None
     else:
+        ahora = time.monotonic()
+        if _CATALOGO_CACHE["payload"] is not None and ahora < _CATALOGO_CACHE["expires"]:
+            return _CATALOGO_CACHE["payload"]
         try:
-            from models import ConfiguracionClinica, Especialidad, ProfesionalEspecialidad
-
-            cfg = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.activo == True).first()
-            especialidades = db.query(Especialidad).filter(Especialidad.activa == True).order_by(Especialidad.orden.asc(), Especialidad.nombre.asc()).all()
-            profesionales = {esp.nombre: [] for esp in especialidades}
-            especialidad_por_id = {esp.id: esp.nombre for esp in especialidades}
-            if especialidad_por_id:
-                rows = db.query(ProfesionalEspecialidad).filter(
-                    ProfesionalEspecialidad.especialidad_id.in_(especialidad_por_id.keys()),
-                    ProfesionalEspecialidad.activo == True,
-                ).order_by(ProfesionalEspecialidad.especialidad_id.asc(), ProfesionalEspecialidad.nombre_publico.asc()).all()
-                for row in rows:
-                    nombre_esp = especialidad_por_id.get(row.especialidad_id)
-                    if nombre_esp:
-                        staff = row.profesional
-                        profesionales[nombre_esp].append({
-                            "nombre": row.nombre_publico,
-                            "turno": row.turno,
-                            "nombre_staff": staff.nombre if staff else "",
-                            "apellido_staff": staff.apellido if staff else "",
-                            "profesional_id": row.profesional_id,
-                        })
-            if not profesionales:
-                profesionales = DEFAULT_PROFESIONALES
+            profesionales, cfg = _catalogo_desde_db(db)
         except Exception:
             profesionales = DEFAULT_PROFESIONALES
             cfg = None
@@ -158,7 +192,7 @@ def catalogo_horarios(db=None) -> dict:
         ]
         for esp, profs in profesionales.items()
     }
-    return {
+    payload = {
         "especialidades": sorted(profesionales.keys()),
         "profesionales": profesionales,
         "turno_por_especialidad": turno_por_especialidad,
@@ -166,6 +200,10 @@ def catalogo_horarios(db=None) -> dict:
         "slots_tarde": slots_tarde,
         "profesionales_json": profesionales_payload,
     }
+    if db is not None:
+        _CATALOGO_CACHE["payload"] = payload
+        _CATALOGO_CACHE["expires"] = time.monotonic() + _CATALOGO_TTL_SEG
+    return payload
 
 
 def slots_para_especialidad(especialidad, db=None):

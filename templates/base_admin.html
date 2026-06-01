@@ -1,5 +1,13 @@
 {% extends "base.html" %}
 
+{% block extra_head %}
+<link rel="prefetch" href="/admin/">
+<link rel="prefetch" href="/admin/agenda">
+<link rel="prefetch" href="/admin/pacientes">
+<link rel="prefetch" href="/admin/turnos">
+<link rel="prefetch" href="/admin/resultados">
+{% endblock %}
+
 {% block body %}
 <div class="flex h-screen overflow-hidden">
 

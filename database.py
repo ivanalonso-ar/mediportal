@@ -8,9 +8,10 @@ logger = logging.getLogger("mediportal.database")
 
 SQLALCHEMY_DATABASE_URL = settings.DATABASE_URL
 
-_es_sqlite = SQLALCHEMY_DATABASE_URL.startswith("sqlite")
+es_sqlite = SQLALCHEMY_DATABASE_URL.startswith("sqlite")
+_es_sqlite = es_sqlite
 
-if _es_sqlite:
+if es_sqlite:
     logger.warning("ADVERTENCIA: Usando SQLite. Configura DATABASE_URL con Supabase para produccion.")
     connect_args = {"check_same_thread": False}
     engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args=connect_args, pool_pre_ping=True)

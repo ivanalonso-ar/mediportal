@@ -38,9 +38,17 @@ def debe_marcarse_ausente(turno: Turno, ahora: datetime.datetime | None = None) 
 def expirar_turnos_ausentes(db: Session) -> list[int]:
     """Marca como ausente turnos activos con más de 24h desde el horario programado."""
     ahora = datetime.datetime.now()
-    activos = db.query(Turno).filter(Turno.estado.in_(ESTADOS_ACTIVOS)).all()
+    limite = ahora - datetime.timedelta(hours=HORAS_GRACIA_AUSENTE)
+    candidatos = (
+        db.query(Turno)
+        .filter(
+            Turno.estado.in_(ESTADOS_ACTIVOS),
+            Turno.fecha <= limite.strftime("%Y-%m-%d"),
+        )
+        .all()
+    )
     marcados = []
-    for turno in activos:
+    for turno in candidatos:
         if debe_marcarse_ausente(turno, ahora):
             turno.estado = "ausente"
             marcados.append(turno.id)

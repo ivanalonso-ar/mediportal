@@ -1,5 +1,11 @@
 {% extends "base.html" %}
 
+{% block extra_head %}
+<link rel="prefetch" href="/paciente/turnos">
+<link rel="prefetch" href="/paciente/resultados">
+<link rel="prefetch" href="/paciente/perfil">
+{% endblock %}
+
 {% block body %}
 <div class="min-h-screen flex flex-col pb-16 sm:pb-0">
 

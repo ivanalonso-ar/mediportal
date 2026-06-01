@@ -4,7 +4,7 @@ import datetime
 import logging
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse, JSONResponse, Response
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
@@ -12,7 +12,7 @@ from models import Paciente, UsuarioStaff, Turno, TurnoLog, Resultado, Aviso
 from obras_sociales import listar_obras_sociales
 from notif_utils import crear_notificacion
 from horarios import catalogo_horarios, resolver_profesional_id
-from disponibilidad import hora_disponible, expirar_turnos_ausentes
+from disponibilidad import hora_disponible
 from auth import get_current_user, get_password_hash
 from mail import mail_bienvenida, mail_turno_confirmado, mail_turno_cancelado, mail_resultado_disponible, mail_registro_aprobado, mail_registro_rechazado
 from storage import subir_archivo, leer_archivo, eliminar_archivo
@@ -86,7 +86,13 @@ async def dashboard(request: Request, db: Session = Depends(get_db)):
         Resultado.created_at >= datetime.datetime.strptime(mes_actual + "-01", "%Y-%m-%d")
     ).count()
 
-    ultimos_turnos = db.query(Turno).order_by(Turno.created_at.desc()).limit(5).all()
+    ultimos_turnos = (
+        db.query(Turno)
+        .options(joinedload(Turno.paciente))
+        .order_by(Turno.created_at.desc())
+        .limit(5)
+        .all()
+    )
 
     return templates.TemplateResponse("admin/dashboard.html", {
         "request": request, "user": user,
@@ -323,7 +329,9 @@ async def turnos_page(request: Request, db: Session = Depends(get_db)):
     if filtro_tipo:
         query = query.filter(Turno.tipo == filtro_tipo)
 
-    turnos = query.order_by(Turno.fecha.desc(), Turno.hora.asc()).all()
+    turnos = query.options(joinedload(Turno.paciente)).order_by(
+        Turno.fecha.desc(), Turno.hora.asc()
+    ).all()
     pacientes = db.query(Paciente).filter(Paciente.activo == True).order_by(Paciente.apellido).all()
 
     # Profesionales disponibles para asignar
@@ -359,8 +367,6 @@ async def agenda_page(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    expirar_turnos_ausentes(db)
-
     fecha_str = request.query_params.get("fecha", datetime.date.today().strftime("%Y-%m-%d"))
     filtro_prof = request.query_params.get("profesional", "")
     if user.get("rol") == "profesional" and not filtro_prof:
@@ -373,11 +379,15 @@ async def agenda_page(request: Request, db: Session = Depends(get_db)):
     if filtro_prof:
         query = query.filter(Turno.profesional == filtro_prof)
 
-    turnos = query.order_by(Turno.hora.asc(), Turno.tipo.asc()).all()
+    turnos = query.options(joinedload(Turno.paciente)).order_by(
+        Turno.hora.asc(), Turno.tipo.asc()
+    ).all()
 
     profesionales = db.query(UsuarioStaff).filter(
         UsuarioStaff.rol == "profesional", UsuarioStaff.activo == True
     ).order_by(UsuarioStaff.apellido).all()
+
+    catalogo = catalogo_horarios(db)
 
     # Calcular fecha anterior y siguiente para navegación
     fecha_obj = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
@@ -386,7 +396,7 @@ async def agenda_page(request: Request, db: Session = Depends(get_db)):
 
     return templates.TemplateResponse("admin/agenda.html", {
         "request": request, "user": user,
-        "turno_por_especialidad": catalogo_horarios(db)["turno_por_especialidad"],
+        "turno_por_especialidad": catalogo["turno_por_especialidad"],
         "turnos": turnos,
         "fecha": fecha_str,
         "fecha_obj": fecha_obj,

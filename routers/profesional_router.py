@@ -4,7 +4,7 @@ import logging
 from urllib.parse import urlencode
 from fastapi import APIRouter, Request, Form, Depends, UploadFile, File
 from fastapi.responses import HTMLResponse, RedirectResponse
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
@@ -13,8 +13,6 @@ from auth import get_current_user
 from notif_utils import crear_notificacion
 from storage import subir_archivo
 from constants import ALLOWED_EXTENSIONS
-from disponibilidad import expirar_turnos_ausentes
-
 from templates_config import templates
 
 router = APIRouter(prefix="/profesional")
@@ -99,8 +97,6 @@ async def agenda(request: Request, db: Session = Depends(get_db)):
     if not user:
         return RedirectResponse(url="/login", status_code=302)
 
-    expirar_turnos_ausentes(db)
-
     vista = request.query_params.get("vista", "dia")
     fecha_str = request.query_params.get("fecha", datetime.date.today().strftime("%Y-%m-%d"))
     fecha_obj = datetime.datetime.strptime(fecha_str, "%Y-%m-%d").date()
@@ -120,12 +116,18 @@ async def agenda(request: Request, db: Session = Depends(get_db)):
         desde = max(hoy, primer_dia_mes).strftime("%Y-%m-%d")
         hasta = ultimo_dia_mes.strftime("%Y-%m-%d")
 
-        turnos_raw = db.query(Turno).filter(
-            Turno.profesional == mi_nombre,
-            Turno.fecha >= desde,
-            Turno.fecha <= hasta,
-            Turno.estado.notin_(["cancelado"])
-        ).order_by(Turno.fecha.asc(), Turno.hora.asc()).all()
+        turnos_raw = (
+            db.query(Turno)
+            .options(joinedload(Turno.paciente))
+            .filter(
+                Turno.profesional == mi_nombre,
+                Turno.fecha >= desde,
+                Turno.fecha <= hasta,
+                Turno.estado.notin_(["cancelado"]),
+            )
+            .order_by(Turno.fecha.asc(), Turno.hora.asc())
+            .all()
+        )
 
         from collections import defaultdict
         turnos_por_dia = defaultdict(list)
@@ -151,11 +153,17 @@ async def agenda(request: Request, db: Session = Depends(get_db)):
             "mes_siguiente": (ultimo_dia_mes + datetime.timedelta(days=1)).strftime("%Y-%m-%d"),
         })
     else:
-        turnos = db.query(Turno).filter(
-            Turno.fecha == fecha_str,
-            Turno.profesional == mi_nombre,
-            Turno.estado.notin_(["cancelado"])
-        ).order_by(Turno.hora.asc(), Turno.tipo.asc()).all()
+        turnos = (
+            db.query(Turno)
+            .options(joinedload(Turno.paciente))
+            .filter(
+                Turno.fecha == fecha_str,
+                Turno.profesional == mi_nombre,
+                Turno.estado.notin_(["cancelado"]),
+            )
+            .order_by(Turno.hora.asc(), Turno.tipo.asc())
+            .all()
+        )
 
         return templates.TemplateResponse("profesional/agenda.html", {
             "request": request, "user": user,
@@ -193,9 +201,14 @@ async def informes(request: Request, db: Session = Depends(get_db)):
         )
     pacientes = query.order_by(Paciente.apellido).all()
 
-    resultados = db.query(Resultado).filter(
-        Resultado.subido_por == mi_nombre
-    ).order_by(Resultado.created_at.desc()).limit(20).all()
+    resultados = (
+        db.query(Resultado)
+        .options(joinedload(Resultado.paciente))
+        .filter(Resultado.subido_por == mi_nombre)
+        .order_by(Resultado.created_at.desc())
+        .limit(20)
+        .all()
+    )
 
     qp = request.query_params
     return templates.TemplateResponse("profesional/informes.html", {
