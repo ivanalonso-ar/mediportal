@@ -21,7 +21,7 @@ from constants import ALLOWED_EXTENSIONS
 router = APIRouter(prefix="/admin")
 logger = logging.getLogger("mediportal.admin")
 
-ESTADOS_TURNO = ["pendiente", "confirmado", "cancelado", "completado"]
+ESTADOS_TURNO = ["pendiente", "confirmado", "cancelado", "completado", "ausente"]
 
 
 def require_staff(request: Request):

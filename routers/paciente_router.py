@@ -279,6 +279,73 @@ async def descargar_resultado(
     )
 
 
+@router.get("/resultados/imprimir/{resultado_id}", response_class=HTMLResponse)
+async def imprimir_resultado(
+    request: Request,
+    resultado_id: int,
+    db: Session = Depends(get_db)
+):
+    user = require_paciente(request)
+    if not user:
+        return RedirectResponse(url="/login", status_code=302)
+
+    pid = int(user["sub"])
+    miembro_ids = [m.miembro_id for m in db.query(GrupoFamiliar).filter(GrupoFamiliar.titular_id == pid).all()]
+    todos_ids = [pid] + miembro_ids
+
+    resultado = db.query(Resultado).filter(
+        Resultado.id == resultado_id,
+        Resultado.paciente_id.in_(todos_ids)
+    ).first()
+
+    if not resultado or not resultado.archivo_path:
+        return RedirectResponse(url="/paciente/resultados?msg=Archivo+no+encontrado.&tipo=error", status_code=302)
+
+    url_descarga = f"/paciente/resultados/descargar/{resultado_id}"
+    nombre = resultado.titulo or resultado.archivo_nombre or "Resultado"
+
+    # Página mínima: embebe el PDF y dispara impresión automáticamente
+    html = f"""<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>{nombre}</title>
+  <style>
+    * {{ margin: 0; padding: 0; box-sizing: border-box; }}
+    body {{ font-family: sans-serif; background: #1e293b; display: flex; flex-direction: column; height: 100vh; }}
+    #barra {{ background: #0f172a; color: #e2e8f0; padding: 10px 16px; display: flex; align-items: center; gap: 12px; flex-shrink: 0; }}
+    #barra span {{ font-size: 14px; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }}
+    #barra a {{ text-decoration: none; font-size: 13px; padding: 6px 14px; border-radius: 6px; font-weight: 500; }}
+    .btn-imprimir {{ background: #3b82f6; color: #fff; }}
+    .btn-imprimir:hover {{ background: #2563eb; }}
+    .btn-descargar {{ background: #334155; color: #e2e8f0; border: 1px solid #475569; }}
+    .btn-descargar:hover {{ background: #475569; }}
+    embed {{ flex: 1; width: 100%; border: none; }}
+    @media print {{ #barra {{ display: none; }} embed {{ height: 100vh; }} }}
+  </style>
+</head>
+<body>
+  <div id="barra">
+    <span>{nombre}</span>
+    <a href="{url_descarga}" download class="btn-descargar">⬇ Descargar</a>
+    <a href="#" onclick="window.print(); return false;" class="btn-imprimir">🖨 Imprimir</a>
+  </div>
+  <embed id="visor" src="{url_descarga}" type="application/pdf">
+  <script>
+    // Dispara el diálogo de impresión una vez que el PDF cargó
+    document.getElementById("visor").addEventListener("load", function() {{
+      setTimeout(function() {{ window.print(); }}, 400);
+    }});
+    // Fallback por si el evento load no dispara (algunos browsers con plugins)
+    window.addEventListener("load", function() {{
+      setTimeout(function() {{ window.print(); }}, 1200);
+    }});
+  </script>
+</body>
+</html>"""
+    return HTMLResponse(content=html)
+
+
 # ─── Perfil ───────────────────────────────────────────────────────────────────
 
 @router.get("/perfil", response_class=HTMLResponse)
