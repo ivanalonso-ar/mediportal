@@ -83,6 +83,10 @@ async def favicon():
 async def ping():
     return {"status": "ok"}
 
+@app.api_route("/ping", methods=["GET", "HEAD"])
+async def ping():
+    return {"status": "ok"}
+
 app.include_router(auth_router.router)
 app.include_router(paciente_router.router)
 app.include_router(admin_router.router)
