@@ -1,7 +1,7 @@
 """
 Provisiona una instancia nueva de cliente.
 
-Requiere DATABASE_URL apuntando al PostgreSQL de Supabase.
+Requiere DATABASE_URL apuntando a PostgreSQL/Supabase o a SQLite local para pruebas.
 
 Ejemplo:
     python setup_cliente.py --clinica "Centro Medico Norte" --slug centro-norte \
@@ -20,7 +20,7 @@ import re
 import sys
 
 from auth import get_password_hash
-from database import SQLALCHEMY_DATABASE_URL, SessionLocal
+from database import SQLALCHEMY_DATABASE_URL, SessionLocal, activar_clinica
 from init_db import (
     create_admin,
     ensure_configuracion_base,
@@ -51,6 +51,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--email", default="", help="Email publico de la clinica.")
     parser.add_argument("--telefono", default="", help="Telefono publico de la clinica.")
     parser.add_argument("--direccion", default="", help="Direccion publica de la clinica.")
+    parser.add_argument("--color-primario", default=None, help="Color de marca hexadecimal, por ejemplo #16a34a.")
     parser.add_argument("--admin-email", required=True)
     parser.add_argument("--admin-password", required=True)
     parser.add_argument("--admin-nombre", default="Admin")
@@ -139,6 +140,9 @@ def main() -> None:
     if len(args.admin_password) < 12:
         print("ERROR: --admin-password debe tener al menos 12 caracteres para provisioning.", file=sys.stderr)
         raise SystemExit(2)
+    if args.color_primario and not re.fullmatch(r"#[0-9a-fA-F]{6}", args.color_primario):
+        print("ERROR: --color-primario debe tener formato hexadecimal #RRGGBB.", file=sys.stderr)
+        raise SystemExit(2)
     if args.staff_email and len(args.staff_password) < 12:
         print("ERROR: --staff-password debe tener al menos 12 caracteres.", file=sys.stderr)
         raise SystemExit(2)
@@ -151,10 +155,6 @@ def main() -> None:
     if args.paciente_telefono and not solo_numeros(args.paciente_telefono):
         print("ERROR: --paciente-telefono solo puede contener numeros.", file=sys.stderr)
         raise SystemExit(2)
-    if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
-        print("ERROR: setup_cliente.py requiere DATABASE_URL de Supabase/PostgreSQL, no SQLite.", file=sys.stderr)
-        raise SystemExit(2)
-
     supabase = get_supabase_client()
     if supabase:
         print("OK Supabase client configurado")
@@ -165,7 +165,7 @@ def main() -> None:
 
     db = SessionLocal()
     try:
-        ensure_configuracion_base(
+        clinica = ensure_configuracion_base(
             db,
             nombre=args.clinica,
             slug=slug,
@@ -173,7 +173,10 @@ def main() -> None:
             email=args.email,
             telefono=args.telefono,
             direccion=args.direccion,
+            color_primario=args.color_primario,
         )
+        db.flush()
+        activar_clinica(db, clinica.id)
 
         obras = especialidades = staff = relaciones = 0
         if not args.sin_catalogos:

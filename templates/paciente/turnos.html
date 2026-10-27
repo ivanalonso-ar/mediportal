@@ -1,6 +1,6 @@
 {% extends "base_paciente.html" %}
 {% set active_page = "turnos" %}
-{% block title %}Mis Turnos — MediPortal{% endblock %}
+{% block title %}Mis Turnos — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}{% endblock %}
 
 {% block content %}
 
@@ -23,7 +23,7 @@
     <div class="flex items-start gap-3 px-4 py-3 rounded-xl border text-sm
         {% if a.tipo == 'importante' %}bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800 text-red-800 dark:text-red-300
         {% elif a.tipo == 'warning' %}bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800 text-amber-800 dark:text-amber-300
-        {% else %}bg-sky-50 dark:bg-sky-900/20 border-sky-200 dark:border-sky-800 text-sky-800 dark:text-sky-300{% endif %}">
+        {% else %}bg-accent-50 dark:bg-accent-900/20 border-accent-200 dark:border-accent-800 text-accent-800 dark:text-accent-300{% endif %}">
         <span class="flex-shrink-0 mt-0.5">{% if a.tipo == 'importante' %}🔴{% elif a.tipo == 'warning' %}⚠️{% else %}ℹ️{% endif %}</span>
         <div><p class="font-semibold">{{ a.titulo }}</p><p class="mt-0.5 opacity-90">{{ a.contenido }}</p></div>
     </div>
@@ -99,7 +99,7 @@
         <div class="flex items-stretch">
             <!-- Barra de color lateral según estado -->
             <div class="w-1.5 flex-shrink-0
-                {% if t.estado == 'confirmado' %}bg-sky-400
+                {% if t.estado == 'confirmado' %}bg-accent-400
                 {% elif t.estado == 'pendiente' %}bg-amber-400
                 {% elif t.estado == 'completado' %}bg-emerald-400
                 {% else %}bg-slate-300{% endif %}"></div>
@@ -109,12 +109,12 @@
                     <div class="flex items-start gap-3">
                         <!-- Ícono especialidad -->
                         <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
-                            {% if t.estado == 'confirmado' %}bg-sky-50 dark:bg-sky-900/20
+                            {% if t.estado == 'confirmado' %}bg-accent-50 dark:bg-accent-900/20
                             {% elif t.estado == 'pendiente' %}bg-amber-50 dark:bg-amber-900/20
                             {% elif t.estado == 'completado' %}bg-emerald-50 dark:bg-emerald-900/20
                             {% else %}bg-slate-100 dark:bg-slate-800{% endif %}">
                             <svg class="w-5 h-5
-                                {% if t.estado == 'confirmado' %}text-sky-500
+                                {% if t.estado == 'confirmado' %}text-accent-500
                                 {% elif t.estado == 'pendiente' %}text-amber-500
                                 {% elif t.estado == 'completado' %}text-emerald-500
                                 {% else %}text-slate-400{% endif %}"

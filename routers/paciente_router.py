@@ -459,6 +459,8 @@ async def perfil_editar(
     token = create_access_token({
         "sub": str(paciente.id),
         "tipo": "paciente",
+        "clinica_id": paciente.clinica_id,
+        "clinica_slug": request.state.clinica.slug,
         "nombre": paciente.nombre,
         "apellido": paciente.apellido,
         "primer_login": False

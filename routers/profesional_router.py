@@ -265,7 +265,7 @@ async def subir_informe(
             )
         contenido = await archivo.read()
         try:
-            file_path, file_name = subir_archivo(contenido, archivo.filename, ext)
+            file_path, file_name = subir_archivo(contenido, archivo.filename, ext, request.state.clinica.slug)
         except Exception:
             logger.exception("Error al subir archivo de informe.")
             return RedirectResponse(url="/profesional/informes?msg=No+se+pudo+guardar+el+archivo.&tipo_msg=error", status_code=302)

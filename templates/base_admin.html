@@ -21,7 +21,7 @@
                 </svg>
             </div>
             <div>
-                <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm block leading-tight">MediPortal</span>
+                <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm block leading-tight">{{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}</span>
                 <span class="text-[10px] text-slate-400 leading-tight block capitalize">{{ user.rol if user else 'Panel' }}</span>
             </div>
         </div>
@@ -135,7 +135,7 @@
                         <div class="w-7 h-7 rounded-lg bg-accent-600 flex items-center justify-center">
                             <svg class="w-3.5 h-3.5 text-white" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/></svg>
                         </div>
-                        <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm">MediPortal</span>
+                        <span class="font-semibold text-slate-800 dark:text-slate-100 text-sm">{{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}</span>
                     </div>
                     <button onclick="toggleMobileMenu()" class="p-1 text-slate-400">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
@@ -199,7 +199,7 @@
         <!-- Content -->
         <main class="flex-1 overflow-y-auto bg-slate-100 dark:bg-slate-950 p-4 sm:p-6">
             {% block content %}{% endblock %}
-            <p class="mt-8 text-center text-xs text-slate-400">MediPortal &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
+            <p class="mt-8 text-center text-xs text-slate-400">{{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }} &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
         </main>
     </div>
 </div>

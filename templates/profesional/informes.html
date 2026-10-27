@@ -1,6 +1,6 @@
 {% extends "base_profesional.html" %}
 {% set active_page = "informes" %}
-{% block title %}Cargar Informe — MediPortal{% endblock %}
+{% block title %}Cargar Informe — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}{% endblock %}
 
 {% block content %}
 
@@ -11,7 +11,7 @@
 
 {% if msg %}
 <div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm border
-    {% if msg_tipo == 'success' %}bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300
+    {% if msg_tipo == 'success' %}bg-accent-50 dark:bg-accent-900/30 border-accent-200 dark:border-accent-800 text-accent-700 dark:text-accent-300
     {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">
     {{ msg }}
 </div>
@@ -35,7 +35,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Paciente *</label>
                     <select name="paciente_id" required id="select-paciente"
-                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
                         <option value="">Seleccioná un paciente</option>
                         {% for p in pacientes %}
                         <option value="{{ p.id }}" {% if paciente_id_sel == p.id|string or request.query_params.get('paciente_id') == p.id|string %}selected{% endif %}>
@@ -52,13 +52,13 @@
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Título del informe *</label>
                     <input type="text" name="titulo" required placeholder="Ej: Electrocardiograma, Hemograma..."
                         value="{{ titulo_sugerido }}"
-                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Fecha del estudio</label>
                     <input type="date" name="fecha_estudio"
-                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500">
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500">
                 </div>
 
                 <!-- Selector tipo de carga -->
@@ -68,12 +68,12 @@
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="radio" name="tipo_carga" value="texto" onchange="toggleTipoCarga('texto')"
                                 {% if turno_completado %}checked{% endif %}
-                                class="text-sky-600 focus:ring-sky-500">
+                                class="text-accent-600 focus:ring-accent-500">
                             <span class="text-sm text-slate-700 dark:text-slate-300">Informe escrito</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="radio" name="tipo_carga" value="pdf" {% if not turno_completado %}checked{% endif %} onchange="toggleTipoCarga('pdf')"
-                                class="text-sky-600 focus:ring-sky-500">
+                                class="text-accent-600 focus:ring-accent-500">
                             <span class="text-sm text-slate-700 dark:text-slate-300">Subir PDF</span>
                         </label>
                     </div>
@@ -83,14 +83,14 @@
                 <div id="area-texto" style="display:{% if turno_completado %}block{% else %}none{% endif %}">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Texto del informe</label>
                     <textarea name="descripcion" rows="6" placeholder="Escribí el informe aquí..."
-                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-sky-500 resize-y"></textarea>
+                        class="w-full px-3 py-2.5 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 placeholder-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-accent-500 resize-y"></textarea>
                 </div>
 
                 <!-- Subir PDF -->
                 <div id="area-pdf" style="display:{% if turno_completado %}none{% else %}block{% endif %}">
                     <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Archivo PDF *</label>
                     <div id="drop-zone-informe"
-                        class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-sky-400 transition-colors"
+                        class="border-2 border-dashed border-slate-300 dark:border-slate-600 rounded-xl p-6 text-center cursor-pointer hover:border-accent-400 transition-colors"
                         onclick="document.getElementById('archivo-input').click()">
                         <svg class="w-8 h-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" fill="none" stroke="currentColor" stroke-width="1.5" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"/>
@@ -101,7 +101,7 @@
                 </div>
 
                 <button type="submit"
-                    class="w-full py-2.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-sm font-medium transition-colors shadow-sm">
+                    class="w-full py-2.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-sm font-medium transition-colors shadow-sm">
                     Cargar informe
                 </button>
             </form>
@@ -119,11 +119,11 @@
                 {% for r in resultados %}
                 <div class="px-4 py-3">
                     <p class="text-sm font-medium text-slate-700 dark:text-slate-300">{{ r.titulo }}</p>
-                    <p class="text-xs text-sky-600 dark:text-sky-400 mt-0.5">{{ r.paciente.apellido }}, {{ r.paciente.nombre }}</p>
+                    <p class="text-xs text-accent-600 dark:text-accent-400 mt-0.5">{{ r.paciente.apellido }}, {{ r.paciente.nombre }}</p>
                     <p class="text-xs text-slate-400 mt-0.5">
                         {% if r.fecha_estudio %}{{ r.fecha_estudio }} · {% endif %}
                         {% if r.archivo_path %}
-                        <span class="text-blue-600 dark:text-blue-400">PDF</span>
+                        <span class="text-accent-600 dark:text-accent-400">PDF</span>
                         {% else %}
                         <span class="text-slate-400">Texto</span>
                         {% endif %}
@@ -162,7 +162,7 @@ document.getElementById('archivo-input').addEventListener('change', function() {
     const label = document.getElementById('file-label');
     label.textContent = this.files[0] ? this.files[0].name : 'Hacé clic para seleccionar un PDF';
     if (this.files[0]) {
-        document.getElementById('drop-zone-informe').classList.add('border-sky-500');
+        document.getElementById('drop-zone-informe').classList.add('border-accent-500');
     }
 });
 

@@ -79,6 +79,38 @@ python setup_cliente.py \
   --admin-password "una-clave-segura"
 ```
 
+### Probar dos clínicas en una misma instancia
+
+Cada clínica usa una fila de `configuracion_clinica`; los registros operativos quedan asociados por `clinica_id`. Para probar una segunda clínica en Supabase, primero inicializá el esquema con `python init_db.py` y luego provisioná SegundoPortal:
+
+```bash
+python setup_cliente.py \
+  --clinica "SegundoPortal" \
+  --slug segundoportal \
+  --color-primario "#16a34a" \
+  --admin-email admin@segundoportal.example \
+  --admin-password "<clave-segura-de-12-o-mas-caracteres>" \
+  --paciente-dni 30111222 \
+  --paciente-password "<clave-de-prueba>" \
+  --paciente-nombre Ana \
+  --paciente-apellido Verde \
+  --paciente-email paciente@segundoportal.example
+```
+
+La inicialización carga catálogos y profesionales de ejemplo dentro de esa clínica. El DNI de muestra puede repetirse en MediPortal porque la unicidad se aplica dentro de cada clínica.
+
+En desarrollo, abrí `/login?clinica=mediportal` o `/login?clinica=segundoportal`. Para cambiar un matiz desde el SQL Editor de Supabase, alcanza con actualizar el color principal; la paleta de acentos se deriva automáticamente:
+
+```sql
+update configuracion_clinica
+set color_primario = '#22c55e'
+where slug = 'segundoportal';
+```
+
+Las migraciones agregan `clinica_id`, asignan los datos actuales a MediPortal y activan políticas RLS usando el contexto transaccional `app.clinica_id`. La aplicación también filtra las consultas ORM por clínica. Para que PostgreSQL aplique además RLS a la conexión de la app, el rol de `DATABASE_URL` no debe tener `BYPASSRLS`; verificá el rol configurado en Supabase antes de usarlo en producción.
+
+En una base local nueva de SQLite: `python init_db.py` crea MediPortal y `setup_cliente.py` provisiona la segunda clínica sin conectarse a Supabase.
+
 ---
 
 ## 6. Ejecutar servidor

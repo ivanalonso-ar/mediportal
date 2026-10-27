@@ -4,11 +4,17 @@ from sqlalchemy.orm import relationship
 from database import Base
 
 
-class Paciente(Base):
+class TenantMixin:
+    """Agrega pertenencia obligatoria a una clínica en cada dato operativo."""
+
+    clinica_id = Column(Integer, ForeignKey("configuracion_clinica.id", ondelete="RESTRICT"), nullable=False)
+
+
+class Paciente(Base, TenantMixin):
     __tablename__ = "pacientes"
 
     id = Column(Integer, primary_key=True, index=True)
-    dni = Column(String(20), unique=True, nullable=False, index=True)
+    dni = Column(String(20), nullable=False, index=True)
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100), nullable=False)
     email = Column(String(200))
@@ -21,23 +27,27 @@ class Paciente(Base):
     aprobado = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    __table_args__ = (UniqueConstraint("clinica_id", "dni", name="uq_paciente_clinica_dni"),)
+
     turnos = relationship("Turno", back_populates="paciente", cascade="all, delete-orphan")
     resultados = relationship("Resultado", back_populates="paciente", cascade="all, delete-orphan")
     notificaciones = relationship("Notificacion", back_populates="paciente", cascade="all, delete-orphan")
 
 
-class UsuarioStaff(Base):
+class UsuarioStaff(Base, TenantMixin):
     __tablename__ = "usuarios_staff"
 
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(100), nullable=False)
     apellido = Column(String(100), nullable=False)
-    email = Column(String(200), unique=True, nullable=False, index=True)
+    email = Column(String(200), nullable=False, index=True)
     password_hash = Column(String(256), nullable=False)
     rol = Column(String(50), default="recepcion")  # admin, profesional, recepcion
     activo = Column(Boolean, default=True)
     atiende_particular = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
+
+    __table_args__ = (UniqueConstraint("clinica_id", "email", name="uq_staff_clinica_email"),)
 
 
 class ConfiguracionClinica(Base):
@@ -52,7 +62,7 @@ class ConfiguracionClinica(Base):
     direccion = Column(String(250))
     sitio_web = Column(String(250))
     logo_url = Column(String(500))
-    color_primario = Column(String(20), default="#0284c7")
+    color_primario = Column(String(20), default="#2563eb")
     duracion_slot_minutos = Column(Integer, default=20)
     hora_inicio_manana = Column(String(5), default="08:00")
     hora_fin_manana = Column(String(5), default="14:00")
@@ -68,28 +78,32 @@ class ConfiguracionClinica(Base):
     updated_at = Column(DateTime, default=datetime.datetime.utcnow, onupdate=datetime.datetime.utcnow)
 
 
-class Especialidad(Base):
+class Especialidad(Base, TenantMixin):
     __tablename__ = "especialidades"
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(120), nullable=False, unique=True, index=True)
+    nombre = Column(String(120), nullable=False, index=True)
     descripcion = Column(Text)
     activa = Column(Boolean, default=True)
     orden = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    __table_args__ = (UniqueConstraint("clinica_id", "nombre", name="uq_especialidad_clinica_nombre"),)
 
-class ObraSocial(Base):
+
+class ObraSocial(Base, TenantMixin):
     __tablename__ = "obras_sociales"
 
     id = Column(Integer, primary_key=True, index=True)
-    nombre = Column(String(160), nullable=False, unique=True, index=True)
+    nombre = Column(String(160), nullable=False, index=True)
     tipo = Column(String(60), default="obra_social")
     activa = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
+    __table_args__ = (UniqueConstraint("clinica_id", "nombre", name="uq_obra_social_clinica_nombre"),)
 
-class ProfesionalEspecialidad(Base):
+
+class ProfesionalEspecialidad(Base, TenantMixin):
     __tablename__ = "profesionales_especialidades"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -108,7 +122,7 @@ class ProfesionalEspecialidad(Base):
     )
 
 
-class Turno(Base):
+class Turno(Base, TenantMixin):
     __tablename__ = "turnos"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -138,6 +152,7 @@ class Turno(Base):
         # WHERE se ignora pero los NULLs no compiten por unicidad.
         Index(
             "idx_turno_slot_profesional",
+            "clinica_id",
             "fecha", "hora", "profesional",
             unique=True,
             postgresql_where=text("estado IN ('pendiente', 'confirmado') AND profesional IS NOT NULL"),
@@ -145,7 +160,7 @@ class Turno(Base):
     )
 
 
-class TurnoLog(Base):
+class TurnoLog(Base, TenantMixin):
     __tablename__ = "turno_logs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -158,7 +173,7 @@ class TurnoLog(Base):
     turno = relationship("Turno", back_populates="logs")
 
 
-class Resultado(Base):
+class Resultado(Base, TenantMixin):
     __tablename__ = "resultados"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -177,7 +192,7 @@ class Resultado(Base):
     subido_por_ref = relationship("UsuarioStaff", foreign_keys=[subido_por_id])
 
 
-class Aviso(Base):
+class Aviso(Base, TenantMixin):
     __tablename__ = "avisos"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -189,7 +204,7 @@ class Aviso(Base):
     created_at = Column(DateTime, default=datetime.datetime.utcnow)
 
 
-class Notificacion(Base):
+class Notificacion(Base, TenantMixin):
     __tablename__ = "notificaciones"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -204,7 +219,7 @@ class Notificacion(Base):
     paciente = relationship("Paciente", back_populates="notificaciones")
 
 
-class GrupoFamiliar(Base):
+class GrupoFamiliar(Base, TenantMixin):
     __tablename__ = "grupos_familiares"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -222,7 +237,7 @@ class GrupoFamiliar(Base):
     )
 
 
-class SolicitudGrupo(Base):
+class SolicitudGrupo(Base, TenantMixin):
     __tablename__ = "solicitudes_grupo"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -236,7 +251,7 @@ class SolicitudGrupo(Base):
     destinatario = relationship("Paciente", foreign_keys=[destinatario_id])
 
 
-class Bono(Base):
+class Bono(Base, TenantMixin):
     __tablename__ = "bonos"
 
     id = Column(Integer, primary_key=True, index=True)

@@ -8,6 +8,7 @@ import uuid
 import logging
 import mimetypes
 from pathlib import Path
+from urllib.parse import urlparse
 from config import settings
 
 logger = logging.getLogger("mediportal.storage")
@@ -21,7 +22,7 @@ def _usar_supabase() -> bool:
     return bool(settings.SUPABASE_URL and settings.SUPABASE_KEY)
 
 
-def subir_archivo(contenido: bytes, nombre_original: str, ext: str) -> tuple[str, str]:
+def subir_archivo(contenido: bytes, nombre_original: str, ext: str, clinica_slug: str = "mediportal") -> tuple[str, str]:
     """
     Sube un archivo al storage.
     Retorna (archivo_path, archivo_nombre).
@@ -29,25 +30,27 @@ def subir_archivo(contenido: bytes, nombre_original: str, ext: str) -> tuple[str
     - En local: archivo_path es el path en disco.
     """
     nombre_unico = f"{uuid.uuid4().hex}{ext}"
+    ruta_relativa = f"{clinica_slug}/resultados/{nombre_unico}"
 
     if _usar_supabase():
         try:
             from supabase import create_client
             client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
             client.storage.from_(BUCKET).upload(
-                path=nombre_unico,
+                path=ruta_relativa,
                 file=contenido,
                 file_options={"content-type": _mime(ext)}
             )
-            logger.info(f"[storage] Archivo subido a Supabase: {nombre_unico}")
-            return nombre_unico, nombre_original
+            logger.info(f"[storage] Archivo subido a Supabase para clínica {clinica_slug}")
+            return ruta_relativa, nombre_original
         except Exception as e:
             logger.error(f"[storage] Error subiendo a Supabase: {e}")
             raise
 
     # Fallback: filesystem local
-    os.makedirs(LOCAL_UPLOAD_DIR, exist_ok=True)
-    path = os.path.join(LOCAL_UPLOAD_DIR, nombre_unico)
+    directorio_clinica = os.path.join(LOCAL_UPLOAD_DIR, clinica_slug)
+    os.makedirs(directorio_clinica, exist_ok=True)
+    path = os.path.join(directorio_clinica, nombre_unico)
     with open(path, "wb") as f:
         f.write(contenido)
     logger.info(f"[storage] Archivo guardado localmente: {path}")
@@ -90,7 +93,12 @@ def eliminar_archivo(archivo_path: str) -> bool:
     if _usar_supabase():
         try:
             from supabase import create_client
-            nombre = archivo_path.split("/")[-1] if archivo_path.startswith("http") else archivo_path
+            if archivo_path.startswith("http"):
+                ruta_url = urlparse(archivo_path).path
+                marcador = f"/{BUCKET}/"
+                nombre = ruta_url.split(marcador, 1)[1] if marcador in ruta_url else ruta_url.rsplit("/", 1)[-1]
+            else:
+                nombre = archivo_path
             client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
             client.storage.from_(BUCKET).remove([nombre])
             logger.info(f"[storage] Archivo eliminado de Supabase: {nombre}")
