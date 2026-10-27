@@ -2,7 +2,7 @@ import logging
 import os
 import re
 from config import settings
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, func, text
 from sqlalchemy.orm import Session, declarative_base, sessionmaker, with_loader_criteria
 from sqlalchemy import event
 from sqlalchemy.pool import NullPool
@@ -142,7 +142,8 @@ def _asignar_clinica_en_escrituras(session, _flush_context, _instances):
 def get_db(request: Request):
     db = SessionLocal()
     try:
-        # El tenant autenticado prevalece; para login/registro se selecciona por slug.
+        # La sesión autenticada prevalece; en el acceso público, el dominio verificado
+        # prevalece sobre el parámetro de clínica. El slug queda como respaldo local.
         from jose import JWTError, jwt
         from fastapi import HTTPException
         from models import ConfiguracionClinica
@@ -158,11 +159,25 @@ def get_db(request: Request):
                 pass
 
         seleccionar_slug = request.url.path in ("/login", "/registro")
+        host = (request.url.hostname or "").lower().rstrip(".")
+        clinica_por_dominio = None
+        if host:
+            clinica_por_dominio = db.query(ConfiguracionClinica).filter(
+                func.lower(ConfiguracionClinica.dominio) == host,
+                ConfiguracionClinica.activo == True,
+            ).first()
+
         if clinica_id is not None and not seleccionar_slug:
             clinica = db.query(ConfiguracionClinica).filter(
                 ConfiguracionClinica.id == int(clinica_id),
                 ConfiguracionClinica.activo == True,
             ).first()
+            if clinica_por_dominio and (
+                clinica is None or clinica_por_dominio.id != int(clinica_id)
+            ):
+                raise HTTPException(status_code=403, detail="La sesión no pertenece a esta clínica.")
+        elif clinica_por_dominio:
+            clinica = clinica_por_dominio
         else:
             slug = request.query_params.get("clinica", "mediportal")
             clinica = db.query(ConfiguracionClinica).filter(

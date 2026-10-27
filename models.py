@@ -56,6 +56,7 @@ class ConfiguracionClinica(Base):
     id = Column(Integer, primary_key=True, index=True)
     nombre = Column(String(150), nullable=False, default="MediPortal")
     slug = Column(String(80), unique=True, nullable=False, default="mediportal")
+    dominio = Column(String(253), unique=True, nullable=True)
     timezone = Column(String(80), nullable=False, default="America/Argentina/Buenos_Aires")
     telefono = Column(String(50))
     email = Column(String(200))
