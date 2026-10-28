@@ -1,6 +1,6 @@
 {% extends "base_profesional.html" %}
 {% set active_page = "agenda" %}
-{% block title %}Mi Agenda — MediPortal{% endblock %}
+{% block title %}Mi Agenda — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}{% endblock %}
 
 {% block content %}
 
@@ -27,7 +27,7 @@
 
 {% if msg %}
 <div class="auto-dismiss mb-5 px-4 py-3 rounded-lg text-sm border
-    {% if msg_tipo == 'success' %}bg-blue-50 dark:bg-blue-900/30 border-blue-200 dark:border-blue-800 text-blue-700 dark:text-blue-300
+    {% if msg_tipo == 'success' %}bg-accent-50 dark:bg-accent-900/30 border-accent-200 dark:border-accent-800 text-accent-700 dark:text-accent-300
     {% else %}bg-red-50 dark:bg-red-900/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300{% endif %}">{{ msg }}</div>
 {% endif %}
 
@@ -39,14 +39,14 @@
     <form method="get" action="/profesional/agenda">
         <input type="hidden" name="vista" value="dia">
         <input type="date" name="fecha" value="{{ fecha }}" onchange="this.form.submit()"
-            class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-sky-500">
+            class="px-3 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-accent-500">
     </form>
     <a href="/profesional/agenda?vista=dia&fecha={{ fecha_siguiente }}"
         class="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-400 transition-colors">
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
     <a href="/profesional/agenda?vista=dia"
-        class="px-3 py-2 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-medium hover:bg-sky-100 transition-colors">Hoy</a>
+        class="px-3 py-2 rounded-lg bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-400 text-sm font-medium hover:bg-accent-100 transition-colors">Hoy</a>
 </div>
 
 <div class="mb-4">
@@ -72,8 +72,8 @@
         <div class="w-12 flex-shrink-0"></div>
         <div class="flex-1 rounded-xl border p-4 {% if t.tipo == 'sobreturno' %}bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800{% else %}bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800{% endif %}">
             <div class="flex items-center gap-3 flex-wrap">
-                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 {% if t.tipo == 'sobreturno' %}bg-amber-100 dark:bg-amber-900/40{% else %}bg-sky-100 dark:bg-sky-900/30{% endif %}">
-                    <span class="text-xs font-semibold {% if t.tipo == 'sobreturno' %}text-amber-700 dark:text-amber-400{% else %}text-sky-700 dark:text-sky-400{% endif %}">{{ t.paciente.nombre[0] }}{{ t.paciente.apellido[0] }}</span>
+                <div class="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 {% if t.tipo == 'sobreturno' %}bg-amber-100 dark:bg-amber-900/40{% else %}bg-accent-100 dark:bg-accent-900/30{% endif %}">
+                    <span class="text-xs font-semibold {% if t.tipo == 'sobreturno' %}text-amber-700 dark:text-amber-400{% else %}text-accent-700 dark:text-accent-400{% endif %}">{{ t.paciente.nombre[0] }}{{ t.paciente.apellido[0] }}</span>
                 </div>
                 <div class="flex-1">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -97,7 +97,7 @@
                     </form>
                     {% elif t.estado == 'completado' %}
                     <a href="/profesional/informes?paciente_id={{ t.paciente.id }}&fecha_estudio={{ t.fecha }}"
-                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-sky-600 hover:bg-sky-700 text-white text-xs font-medium transition-colors">
+                        class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-accent-600 hover:bg-accent-700 text-white text-xs font-medium transition-colors">
                         <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
                         Subir resultado
                     </a>
@@ -131,7 +131,7 @@
         <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
     </a>
     <a href="/profesional/agenda?vista=mes"
-        class="px-3 py-2 rounded-lg bg-sky-50 dark:bg-sky-900/30 text-sky-700 dark:text-sky-400 text-sm font-medium hover:bg-sky-100 transition-colors ml-1">Este mes</a>
+        class="px-3 py-2 rounded-lg bg-accent-50 dark:bg-accent-900/30 text-accent-700 dark:text-accent-400 text-sm font-medium hover:bg-accent-100 transition-colors ml-1">Este mes</a>
 </div>
 
 {% if turnos_mes %}
@@ -155,8 +155,8 @@
             <div class="px-5 py-3 flex items-center gap-4 {% if t.tipo == 'sobreturno' %}bg-amber-50/50 dark:bg-amber-900/10{% endif %}">
                 <span class="text-xs font-bold text-slate-400 w-10 flex-shrink-0">{{ t.hora }}</span>
                 <div class="w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center
-                    {% if t.tipo == 'sobreturno' %}bg-amber-100 dark:bg-amber-900/40{% else %}bg-sky-100 dark:bg-sky-900/30{% endif %}">
-                    <span class="text-xs font-semibold {% if t.tipo == 'sobreturno' %}text-amber-700 dark:text-amber-400{% else %}text-sky-700 dark:text-sky-400{% endif %}">{{ t.paciente.nombre[0] }}{{ t.paciente.apellido[0] }}</span>
+                    {% if t.tipo == 'sobreturno' %}bg-amber-100 dark:bg-amber-900/40{% else %}bg-accent-100 dark:bg-accent-900/30{% endif %}">
+                    <span class="text-xs font-semibold {% if t.tipo == 'sobreturno' %}text-amber-700 dark:text-amber-400{% else %}text-accent-700 dark:text-accent-400{% endif %}">{{ t.paciente.nombre[0] }}{{ t.paciente.apellido[0] }}</span>
                 </div>
                 <div class="flex-1 min-w-0">
                     <div class="flex items-center gap-2 flex-wrap">
@@ -182,13 +182,13 @@
 {% if dias_libres %}
 <div class="mt-5 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5">
     <h3 class="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-3 flex items-center gap-2">
-        <svg class="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+        <svg class="w-4 h-4 text-accent-500" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
         Días disponibles del mes ({{ dias_libres | length }})
     </h3>
     <div class="flex flex-wrap gap-2">
         {% for d in dias_libres %}
         <a href="/profesional/agenda?vista=dia&fecha={{ d }}"
-            class="px-3 py-1.5 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 text-xs font-medium hover:bg-blue-100 transition-colors">
+            class="px-3 py-1.5 rounded-lg border border-accent-200 dark:border-accent-800 bg-accent-50 dark:bg-accent-900/20 text-accent-700 dark:text-accent-400 text-xs font-medium hover:bg-accent-100 transition-colors">
             {{ d | fecha_corta_es }}
         </a>
         {% endfor %}

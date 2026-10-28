@@ -709,7 +709,7 @@ async def subir_resultado(
             return RedirectResponse(url="/admin/resultados?msg=Tipo+de+archivo+no+permitido.&tipo=error", status_code=302)
         contenido = await archivo.read()
         try:
-            file_path, file_name = subir_archivo(contenido, archivo.filename, ext)
+            file_path, file_name = subir_archivo(contenido, archivo.filename, ext, request.state.clinica.slug)
         except Exception:
             logger.exception("Error al subir archivo de resultado.")
             return RedirectResponse(url="/admin/resultados?msg=No+se+pudo+guardar+el+archivo.&tipo=error", status_code=302)

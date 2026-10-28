@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Registro — MediPortal{% endblock %}
+{% block title %}Registro — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}{% endblock %}
 
 {% block body %}
 <div class="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 px-4 py-10">
@@ -9,7 +9,7 @@
 
         <div class="text-center mb-8">
             <h1 class="text-3xl font-bold text-slate-800 dark:text-slate-100">
-                MediPortal
+                {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}
             </h1>
 
             <p class="text-sm text-slate-500 dark:text-slate-400 mt-2">
@@ -23,7 +23,7 @@
         </div>
         {% endif %}
 
-        <form method="post" action="/registro" class="space-y-4">
+        <form method="post" action="/registro?clinica={{ request.state.clinica.slug }}" class="space-y-4">
 
             <div class="grid grid-cols-2 gap-4">
 
@@ -220,7 +220,7 @@
             ¿Ya tenés cuenta?
 
             <a
-                href="/login"
+                href="/login?clinica={{ request.state.clinica.slug }}"
                 class="text-accent-600 dark:text-accent-400 hover:underline"
             >
                 Iniciá sesión
@@ -247,7 +247,7 @@ function validarPasswords() {
 
     if (pw1.value === pw2.value) {
         msg.textContent = "✓ Las contraseñas coinciden";
-        msg.className = "text-xs text-blue-600 dark:text-blue-400";
+        msg.className = "text-xs text-accent-600 dark:text-accent-400";
     } else {
         msg.textContent = "✗ Las contraseñas no coinciden";
         msg.className = "text-xs text-red-500";
@@ -275,6 +275,6 @@ document.querySelectorAll('[data-password-toggle]').forEach(function(button) {
 });
 </script>
 
-<p class="mt-4 text-center text-xs text-slate-400">MediPortal &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
+<p class="mt-4 text-center text-xs text-slate-400">{{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }} &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions</p>
 
 {% endblock %}

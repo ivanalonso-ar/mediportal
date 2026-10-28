@@ -1,6 +1,6 @@
 {% extends "base_paciente.html" %}
 {% set active_page = "resultados" %}
-{% block title %}Mis Resultados — MediPortal{% endblock %}
+{% block title %}Mis Resultados — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}{% endblock %}
 
 {% block content %}
 

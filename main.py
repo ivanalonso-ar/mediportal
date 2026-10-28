@@ -18,7 +18,7 @@ from fecha_utils import fecha_es, fecha_corta_es
 templates.env.filters["fecha_es"] = fecha_es
 templates.env.filters["fecha_corta_es"] = fecha_corta_es
 
-from database import engine, SessionLocal, es_sqlite
+from database import engine, SessionLocal, activar_clinica, es_sqlite
 import models
 from disponibilidad import expirar_turnos_ausentes
 from routers import auth_router, paciente_router, admin_router, profesional_router
@@ -38,9 +38,15 @@ async def _expirar_turnos_vencidos():
         try:
             db = SessionLocal()
             try:
-                ids = expirar_turnos_ausentes(db)
-                if ids:
-                    logger.info(f"[expirar_turnos] {len(ids)} turno(s) marcado(s) como ausente: IDs {ids}")
+                clinicas = db.query(models.ConfiguracionClinica).filter(
+                    models.ConfiguracionClinica.activo == True
+                ).all()
+                for clinica in clinicas:
+                    activar_clinica(db, clinica.id)
+                    ids = expirar_turnos_ausentes(db)
+                    if ids:
+                        logger.info(f"[expirar_turnos] {len(ids)} turno(s) marcado(s) como ausente")
+                    db.commit()
             finally:
                 db.close()
         except Exception:

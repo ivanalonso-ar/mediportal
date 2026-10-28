@@ -1,6 +1,6 @@
 {% extends "base_admin.html" %}
 {% set active_page = "agenda" %}
-{% block title %}Agenda del día — MediPortal Admin{% endblock %}
+{% block title %}Agenda del día — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }} Admin{% endblock %}
 {% block page_title %}Agenda del día{% endblock %}
 
 {% block content %}

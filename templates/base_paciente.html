@@ -12,7 +12,7 @@
                         <path stroke-linecap="round" stroke-linejoin="round" d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"/>
                     </svg>
                 </div>
-                <span class="font-bold text-slate-800 dark:text-slate-100 tracking-tight">MediPortal</span>
+                <span class="font-bold text-slate-800 dark:text-slate-100 tracking-tight">{{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}</span>
             </a>
 
             <nav class="hidden sm:flex items-center gap-1">
@@ -65,7 +65,7 @@
     </main>
 
     <footer class="hidden sm:block border-t border-slate-200 dark:border-slate-800 py-3 text-center text-xs text-slate-400">
-        MediPortal &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions
+        {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }} &copy; 2026 &nbsp;·&nbsp; Desarrollado por Hydra Solutions
     </footer>
 
     <nav class="sm:hidden fixed bottom-0 left-0 right-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 flex safe-bottom">

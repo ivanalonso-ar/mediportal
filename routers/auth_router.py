@@ -21,13 +21,19 @@ router = APIRouter()
 
 @router.get("/", response_class=HTMLResponse)
 async def root(request: Request):
-    return RedirectResponse(url="/login")
+    user = get_current_user(request)
+    slug = user.get("clinica_slug") if user else None
+    return RedirectResponse(url=f"/login?clinica={slug}" if slug else "/login")
 
 
 @router.get("/login", response_class=HTMLResponse)
-async def login_page(request: Request):
+async def login_page(request: Request, db: Session = Depends(get_db)):
     user = get_current_user(request)
-    if user:
+    misma_clinica = user and (
+        str(user.get("clinica_id")) == str(request.state.clinica.id)
+        or (user.get("clinica_id") is None and request.state.clinica.slug == "mediportal")
+    )
+    if user and misma_clinica:
         if user.get("tipo") == "staff":
             if user.get("rol") == "profesional":
                 return RedirectResponse(url="/profesional/agenda")
@@ -66,6 +72,8 @@ async def login_post(
         token = create_access_token({
             "sub": str(paciente.id),
             "tipo": "paciente",
+            "clinica_id": paciente.clinica_id,
+            "clinica_slug": request.state.clinica.slug,
             "nombre": paciente.nombre,
             "apellido": paciente.apellido,
             "primer_login": paciente.primer_login
@@ -90,6 +98,8 @@ async def login_post(
         token = create_access_token({
             "sub": str(staff.id),
             "tipo": "staff",
+            "clinica_id": staff.clinica_id,
+            "clinica_slug": request.state.clinica.slug,
             "nombre": staff.nombre,
             "apellido": staff.apellido,
             "rol": staff.rol
@@ -103,8 +113,10 @@ async def login_post(
 
 
 @router.get("/logout")
-async def logout():
-    response = RedirectResponse(url="/login", status_code=302)
+async def logout(request: Request):
+    user = get_current_user(request)
+    slug = user.get("clinica_slug") if user else None
+    response = RedirectResponse(url=f"/login?clinica={slug}" if slug else "/login", status_code=302)
     delete_auth_cookie(response)
     return response
 
@@ -157,6 +169,8 @@ async def cambiar_password_post(
     token = create_access_token({
         "sub": str(paciente.id),
         "tipo": "paciente",
+        "clinica_id": paciente.clinica_id,
+        "clinica_slug": request.state.clinica.slug,
         "nombre": paciente.nombre,
         "apellido": paciente.apellido,
         "primer_login": False
@@ -218,7 +232,10 @@ async def registro_post(
     if existente:
         return error("Ya existe una cuenta con ese DNI. Si olvidaste tu contraseña, contactá a la clínica.")
 
-    config = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.activo == True).first()
+    config = db.query(ConfiguracionClinica).filter(
+        ConfiguracionClinica.id == db.info["clinica_id"],
+        ConfiguracionClinica.activo == True,
+    ).first()
     aprobado = not (config and config.requiere_aprobacion_pacientes)
 
     paciente = Paciente(
@@ -245,6 +262,8 @@ async def registro_post(
     token = create_access_token({
         "sub": str(paciente.id),
         "tipo": "paciente",
+        "clinica_id": paciente.clinica_id,
+        "clinica_slug": request.state.clinica.slug,
         "nombre": paciente.nombre,
         "apellido": paciente.apellido,
         "primer_login": False

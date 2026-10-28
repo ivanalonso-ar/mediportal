@@ -12,10 +12,10 @@ import argparse
 import secrets
 from pathlib import Path
 
-from sqlalchemy import text
+from sqlalchemy import inspect, text
 
 from auth import get_password_hash
-from database import SessionLocal, engine
+from database import SessionLocal, activar_clinica, engine
 from horarios import DEFAULT_PROFESIONALES
 from models import (
     Base,
@@ -33,8 +33,54 @@ MIGRATIONS_DIR = ROOT / "migrations"
 
 def run_migrations() -> None:
     if engine.dialect.name == "sqlite":
-        Base.metadata.create_all(bind=engine)
+        tablas_tenant = (
+            "pacientes", "usuarios_staff", "especialidades", "obras_sociales",
+            "profesionales_especialidades", "turnos", "turno_logs", "resultados",
+            "avisos", "notificaciones", "grupos_familiares", "solicitudes_grupo", "bonos",
+        )
+        tablas_existentes = set(inspect(engine).get_table_names())
+        ConfiguracionClinica.__table__.create(bind=engine, checkfirst=True)
         with engine.begin() as conn:
+            for tabla in tablas_tenant:
+                if tabla not in tablas_existentes:
+                    continue
+                columnas = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({tabla})").all()}
+                if "clinica_id" not in columnas:
+                    conn.exec_driver_sql(f"ALTER TABLE {tabla} ADD COLUMN clinica_id INTEGER")
+
+        Base.metadata.create_all(bind=engine)
+        db_inicial = SessionLocal()
+        try:
+            if not db_inicial.query(ConfiguracionClinica).filter(ConfiguracionClinica.slug == "mediportal").first():
+                db_inicial.add(ConfiguracionClinica(nombre="MediPortal", slug="mediportal", color_primario="#2563eb"))
+                db_inicial.commit()
+        finally:
+            db_inicial.close()
+        with engine.begin() as conn:
+            clinica_id = conn.exec_driver_sql(
+                "SELECT id FROM configuracion_clinica WHERE slug = 'mediportal'"
+            ).scalar_one()
+            for tabla in tablas_tenant:
+                columnas = {row[1] for row in conn.exec_driver_sql(f"PRAGMA table_info({tabla})").all()}
+                if "clinica_id" not in columnas:
+                    conn.exec_driver_sql(f"ALTER TABLE {tabla} ADD COLUMN clinica_id INTEGER")
+                conn.exec_driver_sql(f"UPDATE {tabla} SET clinica_id = ? WHERE clinica_id IS NULL", (clinica_id,))
+                conn.exec_driver_sql(f"CREATE INDEX IF NOT EXISTS idx_{tabla}_clinica ON {tabla}(clinica_id)")
+
+            for tabla, columnas, indice in (
+                ("pacientes", "clinica_id, dni", "uq_paciente_clinica_dni"),
+                ("usuarios_staff", "clinica_id, email", "uq_staff_clinica_email"),
+                ("especialidades", "clinica_id, nombre", "uq_especialidad_clinica_nombre"),
+                ("obras_sociales", "clinica_id, nombre", "uq_obra_social_clinica_nombre"),
+            ):
+                conn.exec_driver_sql(f"CREATE UNIQUE INDEX IF NOT EXISTS {indice} ON {tabla}({columnas})")
+
+            conn.exec_driver_sql("DROP INDEX IF EXISTS uq_turno_profesional_activo")
+            conn.exec_driver_sql("DROP INDEX IF EXISTS idx_turno_slot_profesional")
+            conn.exec_driver_sql(
+                "CREATE UNIQUE INDEX idx_turno_slot_profesional ON turnos(clinica_id, fecha, hora, profesional) "
+                "WHERE profesional IS NOT NULL AND profesional <> '' AND estado IN ('pendiente', 'confirmado')"
+            )
             turnos_cols = {row[1] for row in conn.exec_driver_sql("PRAGMA table_info(turnos)").all()}
             if "profesional_id" not in turnos_cols:
                 conn.exec_driver_sql("ALTER TABLE turnos ADD COLUMN profesional_id INTEGER")
@@ -65,6 +111,7 @@ def ensure_configuracion_base(
     email: str = "",
     telefono: str = "",
     direccion: str = "",
+    color_primario: str | None = None,
 ) -> ConfiguracionClinica:
     config = db.query(ConfiguracionClinica).filter(ConfiguracionClinica.slug == slug).first()
     if not config:
@@ -72,6 +119,7 @@ def ensure_configuracion_base(
             nombre=nombre,
             slug=slug,
             timezone=timezone,
+            color_primario=color_primario or "#2563eb",
             email=email or None,
             telefono=telefono or None,
             direccion=direccion or None,
@@ -80,6 +128,8 @@ def ensure_configuracion_base(
     else:
         config.nombre = nombre
         config.timezone = timezone
+        if color_primario:
+            config.color_primario = color_primario
         config.email = email or config.email
         config.telefono = telefono or config.telefono
         config.direccion = direccion or config.direccion
@@ -176,7 +226,9 @@ def initialize_database(seed_catalogos: bool = True) -> None:
 
     db = SessionLocal()
     try:
-        ensure_configuracion_base(db)
+        config_clinica = ensure_configuracion_base(db)
+        db.flush()
+        activar_clinica(db, config_clinica.id)
         if seed_catalogos:
             obras = seed_obras_sociales(db)
             especialidades, staff, relaciones = seed_especialidades_y_profesionales(db)

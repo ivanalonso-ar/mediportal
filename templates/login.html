@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Login — MediPortal{% endblock %}
+{% block title %}Login — {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}{% endblock %}
 
 {% block body %}
 <div class="min-h-screen bg-slate-100 dark:bg-slate-950 flex items-center justify-center p-6">
@@ -8,7 +8,7 @@
     <div class="w-full max-w-6xl grid lg:grid-cols-2 bg-white dark:bg-slate-900 rounded-3xl overflow-hidden shadow-2xl border border-slate-200 dark:border-slate-800">
 
         <!-- PANEL IZQUIERDO -->
-        <div class="hidden lg:flex flex-col justify-between bg-gradient-to-br from-blue-600 to-blue-800 text-white p-12 relative overflow-hidden">
+        <div class="hidden lg:flex flex-col justify-between text-white p-12 relative overflow-hidden" style="background:linear-gradient(135deg,rgb(var(--accent-600)),rgb(var(--accent-800)))">
 
             <div class="absolute inset-0 opacity-10">
                 <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full border border-white"></div>
@@ -20,15 +20,15 @@
                 <div class="flex items-center gap-4 mb-10">
 
                     <div class="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur flex items-center justify-center text-3xl font-bold border border-white/20">
-                        M
+                        {{ (request.state.clinica.nombre if request.state.clinica else 'M')[0] }}
                     </div>
 
                     <div>
                         <h1 class="text-3xl font-bold">
-                            MediPortal
+                            {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}
                         </h1>
 
-                        <p class="text-blue-100 text-sm">
+                        <p class="text-white/80 text-sm">
                             Sistema médico integral
                         </p>
                     </div>
@@ -45,7 +45,7 @@
                         Gestioná tus turnos y consultas médicas en un solo lugar.
                     </h2>
 
-                    <p class="mt-6 text-blue-100 text-lg leading-relaxed max-w-xl">
+                    <p class="mt-6 text-white/80 text-lg leading-relaxed max-w-xl">
                         Accedé a tu historial clínico, administrá turnos y conectate con profesionales de manera rápida y segura.
                     </p>
 
@@ -53,8 +53,8 @@
 
             </div>
 
-            <div class="relative z-10 text-xs text-blue-200">
-                MediPortal &copy; 2026 · Desarrollado por Hydra Solutions
+            <div class="relative z-10 text-xs text-white/70">
+                {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }} &copy; 2026 · Desarrollado por Hydra Solutions
             </div>
 
         </div>
@@ -68,11 +68,11 @@
                 <div class="lg:hidden text-center mb-8">
 
                     <div class="w-16 h-16 mx-auto rounded-2xl bg-accent-600 text-white flex items-center justify-center text-3xl font-bold shadow-lg">
-                        M
+                        {{ (request.state.clinica.nombre if request.state.clinica else 'M')[0] }}
                     </div>
 
                     <h1 class="mt-4 text-3xl font-bold text-slate-800 dark:text-slate-100">
-                        MediPortal
+                        {{ request.state.clinica.nombre if request.state.clinica else 'MediPortal' }}
                     </h1>
 
                     <p class="text-slate-500 dark:text-slate-400 text-sm mt-2">
@@ -102,7 +102,7 @@
                 {% endif %}
 
                 <!-- FORM -->
-                <form method="POST" action="/login" data-turbo="false" class="space-y-5">
+                <form method="POST" action="/login?clinica={{ request.state.clinica.slug }}" data-turbo="false" class="space-y-5">
 
                     <div>
 
@@ -192,7 +192,7 @@
                     ¿No tenés cuenta?
 
                     <a
-                        href="/registro"
+                        href="/registro?clinica={{ request.state.clinica.slug }}"
                         class="text-accent-600 dark:text-accent-400 hover:underline"
                     >
                         Registrate
