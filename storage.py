@@ -7,8 +7,11 @@ import os
 import uuid
 import logging
 import mimetypes
+import json
 from pathlib import Path
-from urllib.parse import urlparse
+from urllib.error import HTTPError, URLError
+from urllib.parse import quote, urlparse
+from urllib.request import Request, urlopen
 from config import settings
 
 logger = logging.getLogger("mediportal.storage")
@@ -20,6 +23,29 @@ SIGNED_URL_TTL_SECONDS = int(os.getenv("SIGNED_URL_TTL_SECONDS", "60"))
 
 def _usar_supabase() -> bool:
     return bool(settings.SUPABASE_URL and settings.SUPABASE_KEY)
+
+
+def _solicitar_storage(metodo: str, ruta: str, contenido: bytes | dict | None = None, tipo: str | None = None) -> bytes:
+    """Llama a Storage usando la clave secreta solo en el encabezado apikey."""
+    base = settings.SUPABASE_URL.rstrip("/")
+    url = f"{base}/storage/v1/{ruta.lstrip('/')}"
+    headers = {"apikey": settings.SUPABASE_KEY}
+    cuerpo = contenido
+    if isinstance(contenido, dict):
+        cuerpo = json.dumps(contenido).encode("utf-8")
+        headers["Content-Type"] = "application/json"
+    elif tipo:
+        headers["Content-Type"] = tipo
+
+    solicitud = Request(url, data=cuerpo, headers=headers, method=metodo)
+    try:
+        with urlopen(solicitud, timeout=30) as respuesta:
+            return respuesta.read()
+    except HTTPError as error:
+        # No incluir headers ni cuerpo para evitar filtrar credenciales o datos del archivo.
+        raise RuntimeError(f"Supabase Storage devolvió HTTP {error.code}.") from error
+    except URLError as error:
+        raise RuntimeError("No se pudo conectar con Supabase Storage.") from error
 
 
 def subir_archivo(contenido: bytes, nombre_original: str, ext: str, clinica_slug: str = "mediportal") -> tuple[str, str]:
@@ -34,13 +60,8 @@ def subir_archivo(contenido: bytes, nombre_original: str, ext: str, clinica_slug
 
     if _usar_supabase():
         try:
-            from supabase import create_client
-            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-            client.storage.from_(BUCKET).upload(
-                path=ruta_relativa,
-                file=contenido,
-                file_options={"content-type": _mime(ext)}
-            )
+            ruta_api = f"object/{BUCKET}/{quote(ruta_relativa, safe='/')}"
+            _solicitar_storage("POST", ruta_api, contenido, _mime(ext))
             logger.info(f"[storage] Archivo subido a Supabase para clínica {clinica_slug}")
             return ruta_relativa, nombre_original
         except Exception as e:
@@ -72,9 +93,8 @@ def leer_archivo(archivo_path: str) -> tuple[bytes, str]:
         return contenido, media_type
 
     if _usar_supabase() and not os.path.exists(archivo_path):
-        from supabase import create_client
-        client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-        contenido = client.storage.from_(BUCKET).download(archivo_path)
+        ruta_api = f"object/authenticated/{BUCKET}/{quote(archivo_path, safe='/')}"
+        contenido = _solicitar_storage("GET", ruta_api)
         return contenido, _mime(Path(archivo_path).suffix)
 
     # Local
@@ -92,15 +112,13 @@ def eliminar_archivo(archivo_path: str) -> bool:
         return False
     if _usar_supabase():
         try:
-            from supabase import create_client
             if archivo_path.startswith("http"):
                 ruta_url = urlparse(archivo_path).path
                 marcador = f"/{BUCKET}/"
                 nombre = ruta_url.split(marcador, 1)[1] if marcador in ruta_url else ruta_url.rsplit("/", 1)[-1]
             else:
                 nombre = archivo_path
-            client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-            client.storage.from_(BUCKET).remove([nombre])
+            _solicitar_storage("DELETE", f"object/{BUCKET}", {"prefixes": [nombre]})
             logger.info(f"[storage] Archivo eliminado de Supabase: {nombre}")
             return True
         except Exception as e:
@@ -122,10 +140,17 @@ def generar_url_firmada(archivo_path: str, expires_in: int = SIGNED_URL_TTL_SECO
     if not archivo_path or archivo_path.startswith("http") or not _usar_supabase():
         return archivo_path
 
-    from supabase import create_client
-    client = create_client(settings.SUPABASE_URL, settings.SUPABASE_KEY)
-    signed = client.storage.from_(BUCKET).create_signed_url(archivo_path, expires_in)
-    return signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url")
+    ruta_api = f"object/sign/{BUCKET}/{quote(archivo_path, safe='/')}"
+    respuesta = _solicitar_storage("POST", ruta_api, {"expiresIn": expires_in})
+    signed = json.loads(respuesta.decode("utf-8"))
+    url = signed.get("signedURL") or signed.get("signedUrl") or signed.get("signed_url")
+    if url and not url.startswith("http"):
+        base = settings.SUPABASE_URL.rstrip("/")
+        if url.startswith("/storage/v1/"):
+            url = base + url
+        else:
+            url = f"{base}/storage/v1/{url.lstrip('/')}"
+    return url
 
 
 def _mime(ext: str) -> str:
